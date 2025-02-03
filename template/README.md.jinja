@@ -5,7 +5,8 @@
 
 
 
-
+# Using Pulumi
+Run a Pulumi Preview: `uv run python -m aws_central_infrastructure.deploy_iac_management --stack=dev`
 
 
 ## Updating from the template
