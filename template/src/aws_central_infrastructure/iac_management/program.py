@@ -68,7 +68,7 @@ class AwsWorkloadPulumiBootstrap(ComponentResource):
                 tags=common_tags(),
             )
             _ = ssm.Parameter(
-                "shared-kms-key-arn-in-{account.name}",
+                f"shared-kms-key-arn-in-{account.name}",
                 type=ssm.ParameterType.STRING,
                 name="/org-managed/infra-state-kms-key-arn",
                 value=central_iac_kms_key_arn,
