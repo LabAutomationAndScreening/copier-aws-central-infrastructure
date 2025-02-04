@@ -64,7 +64,7 @@ class AwsWorkloadPulumiBootstrap(ComponentResource):
                 type=ssm.ParameterType.STRING,
                 name="/org-managed/infra-state-bucket-name",
                 value=central_state_bucket_name,
-                opts=ResourceOptions(provider=provider, parent=self),
+                opts=ResourceOptions(provider=provider, parent=self, delete_before_replace=True),
                 tags=common_tags(),
             )
             _ = ssm.Parameter(
@@ -72,7 +72,7 @@ class AwsWorkloadPulumiBootstrap(ComponentResource):
                 type=ssm.ParameterType.STRING,
                 name="/org-managed/infra-state-kms-key-arn",
                 value=central_iac_kms_key_arn,
-                opts=ResourceOptions(provider=provider, parent=self),
+                opts=ResourceOptions(provider=provider, parent=self, delete_before_replace=True),
                 tags=common_tags(),
             )
 
