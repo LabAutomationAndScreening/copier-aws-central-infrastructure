@@ -58,7 +58,7 @@ jobs:
       DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure
       DEPLOY_SCRIPT_NAME: deploy_iac_management
       PREVIEW_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
-      AWS_ACCOUNT_ID: {% endraw %}{{ aws_production_account_id }}{% raw %}
+      AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
 
 
   required-check:
