@@ -16,7 +16,7 @@ def generate_stack_config() -> dict[str, Any]:
     github_repo_name = "aws-central-infrastructure"
     stack_config["proj:github_repo_name"] = github_repo_name
 
-    stack_config["proj:git_repository_url"] = ConfigValue(value=f"https://github.com/{{% endraw %}{{ central_infra_github_organization_name }}{% raw %}}/{github_repo_name}")
+    stack_config["proj:git_repository_url"] = ConfigValue(value=f"https://github.com/{% endraw %}{{ central_infra_github_organization_name }}{% raw %}/{github_repo_name}")
     return stack_config
 
 
