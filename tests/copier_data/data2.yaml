@@ -14,3 +14,5 @@ aws_development_account_id: 000321456870
 
 
 # Data added based on the specifics of this template
+
+central_infra_github_organization_name: foobar

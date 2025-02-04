@@ -10,3 +10,5 @@ use_staging_environment: false
 
 
 # Data added based on the specifics of this template
+
+central_infra_github_organization_name: my-org
