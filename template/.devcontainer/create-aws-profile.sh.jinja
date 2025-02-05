@@ -3,7 +3,7 @@ set -ex
 
 mkdir -p ~/.aws
 cat >> ~/.aws/config <<EOF
-[profile development]
+[profile central-infra]
 sso_session = org
 sso_account_id = {% endraw %}{{ aws_development_account_id if use_staging_environment else aws_production_account_id }}{% raw %}
 sso_role_name = LowRiskAccountAdminAccess
