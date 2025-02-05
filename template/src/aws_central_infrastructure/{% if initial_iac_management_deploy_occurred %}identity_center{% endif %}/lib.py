@@ -111,10 +111,11 @@ class User(BaseModel):  # NOT RECOMMENDED TO USE THIS IF YOU HAVE AN EXTERNAL ID
     first_name: str
     last_name: str
     email: str
+    _user: identitystore_classic.User | None = None
 
     @override
     def model_post_init(self, _: Any) -> None:
-        _ = identitystore_classic.User(
+        self._user = identitystore_classic.User(
             f"{self.first_name}-{self.last_name}",
             identity_store_id=ORG_INFO.identity_store_id,
             display_name=f"{self.first_name} {self.last_name}",
@@ -125,3 +126,8 @@ class User(BaseModel):  # NOT RECOMMENDED TO USE THIS IF YOU HAVE AN EXTERNAL ID
             ),
             emails=identitystore_classic.UserEmailsArgs(primary=True, value=self.email),
         )
+
+    @property
+    def user(self) -> identitystore_classic.User:
+        assert self._user is not None
+        return self._user
