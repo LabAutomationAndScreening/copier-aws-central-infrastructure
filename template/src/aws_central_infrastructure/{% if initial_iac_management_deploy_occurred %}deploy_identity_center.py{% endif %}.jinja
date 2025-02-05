@@ -4,7 +4,7 @@ from typing import Any
 from ephemeral_pulumi_deploy import run_cli
 from pulumi.automation import ConfigValue
 
-from .iac_management.program import pulumi_program
+from .identity_center.program import pulumi_program
 
 logger = logging.getLogger(__name__)
 

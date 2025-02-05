@@ -6,7 +6,8 @@
 
 
 # Using Pulumi
-Run a Pulumi Preview: `uv run python -m aws_central_infrastructure.deploy_iac_management --stack=dev`
+Run a Pulumi Preview for the IaC Management project: `uv run python -m aws_central_infrastructure.deploy_iac_management --stack=prod`
+Run a Pulumi Preview for the Identity Center project: `uv run python -m aws_central_infrastructure.deploy_identity_center --stack=prod`
 
 
 ## Updating from the template
