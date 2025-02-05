@@ -1,0 +1,12 @@
+# Changes here will be overwritten by Copier
+_commit: v0.0.5-42-g1746365
+_src_path: gh:LabAutomationAndScreening/copier-base-template.git
+description: Managing Central Infrastructure of an AWS Organization
+python_ci_versions:
+- 3.13.1
+python_version: 3.13.1
+repo_name: copier-aws-central-infrastructure
+ssh_port_number: 58573
+template_uses_pulumi: true
+template_uses_python: true
+

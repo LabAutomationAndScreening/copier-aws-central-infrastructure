@@ -1,0 +1,88 @@
+# Questions managed by upstream template
+repo_name:
+    type: str
+    help: What is the name of the repository?
+
+description:
+    type: str
+    help: What is the description of this repository?
+
+ssh_port_number:
+    type: int
+    help: What port should the devcontainer bind SSH to?
+    default: "{{ range(49152, 65536) | random }}"
+
+use_windows_in_ci:
+    type: bool
+    help: Should CI in the instantiated template also use Windows runners?
+    default: no
+
+python_version:
+    type: str
+    help: What version of Python is used for development?
+    default: "3.13.1"
+
+aws_identity_center_id:
+    type: str
+    help: What's the ID of your Organization's AWS Identity center, e.g. d-9145c20053?
+
+aws_org_home_region:
+    type: str
+    help: What is the home region of the AWS Organization (where all of the central infrastructure is deployed)?
+    default: us-east-1
+
+aws_production_account_id:
+    type: str
+    help: What's the AWS Account ID for the Production environment?
+
+use_staging_environment:
+    type: bool
+    help: Does this workload use a Staging environment for its infrastructure?
+    default: yes
+
+aws_staging_account_id:
+    type: str
+    help: What's the AWS Account ID for the Staging environment?
+    when: "{{ use_staging_environment }}"
+
+aws_test_account_id:
+    type: str
+    help: What's the AWS Account ID for the ephemeral Test environment?
+    when: "{{ use_staging_environment }}"
+
+aws_development_account_id:
+    type: str
+    help: What's the AWS Account ID for local development (often the same as the ephemeral test environment)?
+    when: "{{ use_staging_environment }}"
+
+
+
+# Questions specific to this template
+
+central_infra_github_organization_name:
+    type: str
+    help: What is the name of the GitHub organization that owns the central infrastructure repository?
+
+initial_iac_management_deploy_occurred:
+    type: bool
+    help: Has the initial merge to main and the deployment of the IaC Management stack occurred yet?
+    default: no
+
+identity_center_production_account_id:
+    type: str
+    help: What is the account ID for the delegated account to manage the AWS Identity Center?
+
+# Additional Settings
+_min_copier_version: "9.4"
+
+_subdirectory: template
+
+_templates_suffix: .jinja
+
+_exclude:
+    - "copier.yml"
+
+# adapted from https://github.com/copier-org/copier-templates-extensions#context-hook-extension
+_jinja_extensions:
+- copier_templates_extensions.TemplateExtensionLoader
+- extensions/context.py:ContextUpdater
