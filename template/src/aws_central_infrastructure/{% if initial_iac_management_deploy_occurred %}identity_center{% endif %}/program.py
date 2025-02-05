@@ -18,6 +18,5 @@ def pulumi_program() -> None:
     export("aws-account-id", aws_account_id)
 
     # Create Resources Here
-    organization_home_region = "us-east-1"
-    workloads_dict, _ = load_workload_info(organization_home_region=organization_home_region)
+    workloads_dict, _ = load_workload_info()
     create_permissions(workloads_dict)

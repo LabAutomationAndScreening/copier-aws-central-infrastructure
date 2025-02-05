@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 import boto3
+from ephemeral_pulumi_deploy import get_config_str
 from ephemeral_pulumi_deploy.utils import common_tags
 from pulumi import ComponentResource
 from pulumi import ResourceOptions
@@ -38,10 +39,8 @@ class WorkloadParams(ComponentResource):
             )
 
 
-def load_workload_info(
-    *, organization_home_region: str
-) -> tuple[dict[WorkloadName, AwsLogicalWorkload], dict[str, str]]:
-    ssm_client = boto3.client("ssm", region_name=organization_home_region)
+def load_workload_info() -> tuple[dict[WorkloadName, AwsLogicalWorkload], dict[str, str]]:
+    ssm_client = boto3.client("ssm", region_name=get_config_str("proj:aws_org_home_region"))
 
     parameters: list[ParameterMetadataTypeDef] = []
     next_token = None

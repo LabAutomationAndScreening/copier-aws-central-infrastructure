@@ -36,11 +36,11 @@ class AwsWorkloadPulumiBootstrap(ComponentResource):
         self,
         *,
         workload: AwsLogicalWorkload,
-        organization_home_region: str,
         central_state_bucket_name: str,
         central_iac_kms_key_arn: str,
     ):
         super().__init__("labauto:AwsWorkloadPulumiBootstrap", workload.name, None)
+        organization_home_region = get_config_str("proj:aws_org_home_region")
         all_accounts = [*workload.prod_accounts, *workload.staging_accounts, *workload.dev_accounts]
         run_type = "Preview" if is_dry_run() else "Deploy"
         self.providers = {}
@@ -129,7 +129,6 @@ def pulumi_program() -> None:
     export("env", env)
 
     # Create Resources Here
-    organization_home_region = "us-east-1"
     central_state_bucket_name = get_config_str("proj:backend_bucket_name")
     kmy_key_arn = get_config_str("proj:kms_key_id")
     _ = s3.BucketPolicy(
@@ -138,14 +137,13 @@ def pulumi_program() -> None:
         policy_document=create_bucket_policy(central_state_bucket_name),
     )
 
-    workloads_dict, params_dict = load_workload_info(organization_home_region=organization_home_region)
+    workloads_dict, params_dict = load_workload_info()
     providers: dict[AwsAccountId, Provider] = {}
     for workload_info in workloads_dict.values():
         if workload_info.name == "central-infra":
             continue  # don't bootstrap the Central Infra 'workload'---it's unique and has been bootstrapped already by the AWS Organization stack
         bootstrap = AwsWorkloadPulumiBootstrap(
             workload=workload_info,
-            organization_home_region=organization_home_region,
             central_state_bucket_name=central_state_bucket_name,
             central_iac_kms_key_arn=kmy_key_arn,
         )
