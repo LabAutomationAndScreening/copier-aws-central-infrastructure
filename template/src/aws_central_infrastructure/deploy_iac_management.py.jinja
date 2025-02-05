@@ -14,6 +14,7 @@ def generate_stack_config() -> dict[str, Any]:
     """Generate the stack configuration."""
     stack_config: dict[str, Any] = {}
     stack_config["proj:pulumi_project_name"] = "iac-management"
+    stack_config["proj:aws_org_home_region"] = ConfigValue(value="{% endraw %}{{ aws_org_home_region }}{% raw %}")
     github_repo_name = "{% endraw %}{{ repo_name }}{% raw %}"
     stack_config["proj:github_repo_name"] = github_repo_name
 
