@@ -157,6 +157,7 @@ class WorkloadGithubOidc(ComponentResource):
                 role_name=oidc_config.role_name,
                 assume_role_policy_document=assume_role_policy_doc.json,
                 managed_policy_arns=oidc_config.managed_policy_arns,
+                policies=None if oidc_config.role_policy is None else [oidc_config.role_policy],
                 tags=common_tags_native(),
                 opts=ResourceOptions(provider=providers[oidc_config.aws_account_id], parent=self),
             )
