@@ -6,6 +6,7 @@ from pulumi import export
 
 from ..iac_management.workload_params import load_workload_info
 from .permissions import create_permissions
+from .users import create_users
 
 logger = logging.getLogger(__name__)
 
@@ -19,4 +20,5 @@ def pulumi_program() -> None:
 
     # Create Resources Here
     workloads_dict, _ = load_workload_info()
+    create_users()
     create_permissions(workloads_dict)
