@@ -9,6 +9,7 @@ from .iac_management.program import pulumi_program
 logger = logging.getLogger(__name__)
 
 
+# pylint:disable=duplicate-code # there's not much to DRY up here, it's some commonalities between the two deploy scripts
 def generate_stack_config() -> dict[str, Any]:
     """Generate the stack configuration."""
     stack_config: dict[str, Any] = {}
