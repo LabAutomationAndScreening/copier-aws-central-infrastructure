@@ -63,6 +63,10 @@ initial_iac_management_deploy_occurred:
     help: Has the initial merge to main and the deployment of the IaC Management stack occurred yet?
     default: no
 
+identity_center_production_account_id:
+    type: str
+    help: What is the account ID for the delegated account to manage the AWS Identity Center?
+
 # Additional Settings
 _min_copier_version: "9.4"
 
