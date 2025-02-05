@@ -58,6 +58,11 @@ central_infra_github_organization_name:
     type: str
     help: What is the name of the GitHub organization that owns the central infrastructure repository?
 
+initial_iac_management_deploy_occurred:
+    type: bool
+    help: Has the initial merge to main and the deployment of the IaC Management stack occurred yet?
+    default: no
+
 # Additional Settings
 _min_copier_version: "9.4"
 
