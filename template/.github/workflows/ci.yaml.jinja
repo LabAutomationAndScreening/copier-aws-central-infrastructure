@@ -79,7 +79,7 @@ jobs:
 
 {% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}  identity-center-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
-    needs: [ iac-management-pulumi ]
+    needs: [ iac-management-pulumi, artifact-stores-pulumi ] # Identity Center depends on outputs from the Artifact Stores stack to set up permission sets
     with:
       AWS_REGION: us-east-1
       PULUMI_STACK_NAME: prod
