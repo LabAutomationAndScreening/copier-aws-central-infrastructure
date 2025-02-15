@@ -1,3 +1,6 @@
+from typing import TypedDict
+
+from ephemeral_pulumi_deploy import get_config_str
 from ephemeral_pulumi_deploy.utils import common_tags_native
 from pulumi import ComponentResource
 from pulumi import Output
@@ -18,6 +21,14 @@ type WorkloadName = str
 type AwsAccountId = str
 
 
+class CommonOidcConfigKwargs(TypedDict):
+    role_name: str
+    repo_org: str
+    repo_name: str
+    managed_policy_arns: list[str]
+    role_policy: iam.RolePolicyArgs
+
+
 class GithubOidcConfig(BaseModel):
     aws_account_id: str
     role_name: str
@@ -30,33 +41,130 @@ class GithubOidcConfig(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-def create_oidc_for_single_account_workload(
-    *,
-    aws_account_id: str,
-    repo_org: str,
-    repo_name: str,
-    kms_key_arn: str,
-    role_name_suffix: str
-    | None = None,  # Used when there may be multiple separate stacks using different OIDC roles in the same repo.
-) -> list[GithubOidcConfig]:
-    role_name_ending = repo_name
-    if role_name_suffix is not None:
-        role_name_ending += f"--{role_name_suffix}"
-    kms_policy = iam.RolePolicyArgs(
-        policy_name="InfraKmsDecrypt",
+def create_kms_policy() -> iam.RolePolicyArgs:
+    kms_key_arn = get_config_str("proj:kms_key_id")
+    return iam.RolePolicyArgs(
+        policy_name="InfraKmsDecryptAndStateBucketWrite",  # Even when running a Preview, for a stack that has never been instantiated, Pulumi needs to create some files in the S3 bucket
         policy_document=get_policy_document(
             statements=[
                 GetPolicyDocumentStatementArgs(
+                    sid="UseCentralKmsKeyForSecretsInStateFile",
                     effect="Allow",
                     actions=[
                         "kms:Decrypt",
                         "kms:Encrypt",  # unclear why Encrypt is required to run a Preview...but Pulumi gives an error if it's not included
                     ],
                     resources=[kms_key_arn],
-                )
+                ),
+                GetPolicyDocumentStatementArgs(  # TODO: add this to the aws-organizations repo roles
+                    sid="CreateMetadataAndLocks",
+                    effect="Allow",
+                    actions=[
+                        "s3:PutObject",
+                    ],
+                    resources=[
+                        f"arn:aws:s3:::{get_config_str('proj:backend_bucket_name')}/${{aws:PrincipalAccount}}/*"
+                    ],
+                ),
+                GetPolicyDocumentStatementArgs(  # TODO: add this to the aws-organizations repo roles
+                    sid="RemoveLock",
+                    effect="Allow",
+                    actions=[
+                        "s3:DeleteObject",
+                        "s3:DeleteObjectVersion",
+                    ],
+                    resources=[
+                        f"arn:aws:s3:::{get_config_str('proj:backend_bucket_name')}/${{aws:PrincipalAccount}}/*/.pulumi/locks/*.json"
+                    ],
+                ),
             ]
         ).json,
     )
+
+
+def create_oidc_for_standard_workload(
+    *, workload_info: AwsLogicalWorkload, repo_org: str, repo_name: str, role_name_suffix: str | None = None
+) -> list[GithubOidcConfig]:
+    """Permissions for the whole repo to deploy to any dev accounts and to run previews against staging.
+
+    Permissions on main branch to deploy to staging and preview/deploy to prod.
+    """
+    role_name_ending = repo_name
+    if role_name_suffix is not None:
+        role_name_ending += f"--{role_name_suffix}"
+    kms_policy = create_kms_policy()
+    configs: list[GithubOidcConfig] = []
+    preview_kwargs: CommonOidcConfigKwargs = {
+        "role_name": f"InfraPreview--{role_name_ending}",
+        "repo_org": repo_org,
+        "repo_name": repo_name,
+        "managed_policy_arns": ["arn:aws:iam::aws:policy/ReadOnlyAccess"],
+        "role_policy": kms_policy,
+    }
+    deploy_kwargs: CommonOidcConfigKwargs = {
+        "role_name": f"InfraDeploy--{role_name_ending}",
+        "repo_org": repo_org,
+        "repo_name": repo_name,
+        "managed_policy_arns": ["arn:aws:iam::aws:policy/AdministratorAccess"],
+        "role_policy": kms_policy,
+    }
+    for dev_account in workload_info.dev_accounts:
+        configs.append(
+            GithubOidcConfig(
+                aws_account_id=dev_account.id,
+                **deploy_kwargs,
+            )
+        )
+        configs.append(
+            GithubOidcConfig(
+                aws_account_id=dev_account.id,
+                **preview_kwargs,
+            )
+        )
+    for staging_account in workload_info.staging_accounts:
+        configs.append(
+            GithubOidcConfig(
+                aws_account_id=staging_account.id,
+                restrictions="ref:refs/heads/main",
+                **deploy_kwargs,
+            )
+        )
+        configs.append(
+            GithubOidcConfig(
+                aws_account_id=staging_account.id,
+                **preview_kwargs,
+            )
+        )
+    for prod_account in workload_info.prod_accounts:
+        configs.append(
+            GithubOidcConfig(
+                aws_account_id=prod_account.id,
+                restrictions="ref:refs/heads/main",
+                **deploy_kwargs,
+            )
+        )
+        configs.append(
+            GithubOidcConfig(
+                aws_account_id=prod_account.id,
+                restrictions="ref:refs/heads/main",
+                **preview_kwargs,
+            )
+        )
+    return configs
+
+
+def create_oidc_for_single_account_workload(
+    *,
+    aws_account_id: str,
+    repo_org: str,
+    repo_name: str,
+    role_name_suffix: str
+    | None = None,  # Used when there may be multiple separate stacks using different OIDC roles in the same repo.
+) -> list[GithubOidcConfig]:
+    role_name_ending = repo_name
+    if role_name_suffix is not None:
+        role_name_ending += f"--{role_name_suffix}"
+    kms_policy = create_kms_policy()
     return [
         GithubOidcConfig(
             aws_account_id=aws_account_id,

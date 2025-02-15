@@ -4,9 +4,10 @@ from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
 from pulumi import export
 
-from ..iac_management.workload_params import load_workload_info
-from .permissions import create_permissions
-from .users import create_users
+from aws_central_infrastructure.iac_management.lib.workload_params import load_workload_info
+
+from ..permissions import create_permissions
+from ..users import create_users
 
 logger = logging.getLogger(__name__)
 
