@@ -2,10 +2,10 @@ from collections import defaultdict
 
 from ..constants import CENTRAL_INFRA_GITHUB_ORG_NAME
 from ..constants import CENTRAL_INFRA_REPO_NAME
-from .github_oidc_lib import GithubOidcConfig
-from .github_oidc_lib import WorkloadName
-from .github_oidc_lib import create_oidc_for_single_account_workload
-from .shared_lib import AwsLogicalWorkload
+from .lib import AwsLogicalWorkload
+from .lib import GithubOidcConfig
+from .lib import WorkloadName
+from .lib import create_oidc_for_single_account_workload
 
 
 def generate_all_oidc(
