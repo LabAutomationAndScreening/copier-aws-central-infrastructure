@@ -51,7 +51,7 @@ jobs:
     uses: ./.github/workflows/pulumi-aws.yml
     needs: [ lint ]
     with:
-      AWS_REGION: us-east-1
+      AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
       PYTHON_VERSION: {% endraw %}{{ python_version }}{% raw %}
       DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure
@@ -66,7 +66,7 @@ jobs:
     uses: ./.github/workflows/pulumi-aws.yml
     needs: [ iac-management-pulumi ]
     with:
-      AWS_REGION: us-east-1
+      AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
       PYTHON_VERSION: {% endraw %}{{ python_version }}{% raw %}
       DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure
@@ -81,7 +81,7 @@ jobs:
     uses: ./.github/workflows/pulumi-aws.yml
     needs: [ iac-management-pulumi, artifact-stores-pulumi ] # Identity Center depends on outputs from the Artifact Stores stack to set up permission sets
     with:
-      AWS_REGION: us-east-1
+      AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
       PYTHON_VERSION: {% endraw %}{{ python_version }}{% raw %}
       DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure

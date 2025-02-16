@@ -4,6 +4,7 @@ from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
 from ephemeral_pulumi_deploy import get_config_str
+from pulumi import ResourceOptions
 from pulumi import export
 from pulumi_aws_native import Provider
 from pulumi_aws_native import s3
@@ -33,6 +34,7 @@ def pulumi_program() -> None:
         append_resource_suffix("central-iac-state"),
         bucket=central_state_bucket_name,
         policy_document=create_bucket_policy(central_state_bucket_name),
+        opts=ResourceOptions(delete_before_replace=True),
     )
 
     workloads_dict, params_dict = load_workload_info()

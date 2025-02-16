@@ -42,6 +42,7 @@ class ManualArtifactsBucket(ComponentResource):
         org_id = get_organization().id
         _ = s3.BucketPolicy(
             append_resource_suffix("manual-artifacts"),
+            opts=ResourceOptions(parent=self, delete_before_replace=True),
             bucket=self.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright somehow thinks a bucket name can be Output[None], which doesn't seem possible
             policy_document=self.bucket.bucket_name.apply(
                 lambda bucket_name: get_policy_document(
@@ -100,6 +101,7 @@ class DistributorPackagesBucket(ComponentResource):
         org_id = get_organization().id
         _ = s3.BucketPolicy(
             append_resource_suffix("distributor-packages"),
+            opts=ResourceOptions(parent=self, delete_before_replace=True),
             bucket=self.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright somehow thinks a bucket name can be Output[None], which doesn't seem possible
             policy_document=self.bucket.bucket_name.apply(
                 lambda bucket_name: get_policy_document(
