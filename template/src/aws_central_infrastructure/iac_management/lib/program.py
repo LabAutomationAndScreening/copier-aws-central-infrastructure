@@ -1,5 +1,6 @@
 import logging
 
+from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
 from ephemeral_pulumi_deploy import get_config_str
@@ -29,7 +30,7 @@ def pulumi_program() -> None:
     central_state_bucket_name = get_config_str("proj:backend_bucket_name")
     kmy_key_arn = get_config_str("proj:kms_key_id")
     _ = s3.BucketPolicy(
-        "bucket-policy",
+        append_resource_suffix("central-iac-state"),
         bucket=central_state_bucket_name,
         policy_document=create_bucket_policy(central_state_bucket_name),
     )
