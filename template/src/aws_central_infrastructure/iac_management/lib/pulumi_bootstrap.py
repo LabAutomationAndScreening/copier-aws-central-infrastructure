@@ -15,9 +15,28 @@ from pulumi_aws_native import ssm
 
 from ...constants import CENTRAL_INFRA_REPO_NAME
 from .github_oidc_lib import AwsAccountId
+from .shared_lib import ORG_MANAGED_SSM_PARAM_PREFIX
+from .shared_lib import AwsAccountInfo
 from .shared_lib import AwsLogicalWorkload
 
 logger = logging.getLogger(__name__)
+
+
+def create_providers(*, aws_accounts: list[AwsAccountInfo], parent: ComponentResource) -> dict[AwsAccountId, Provider]:
+    providers: dict[AwsAccountId, Provider] = {}
+    organization_home_region = get_config_str("proj:aws_org_home_region")
+    for account in aws_accounts:
+        role_arn = f"arn:aws:iam::{account.id}:role/InfraDeploy--{CENTRAL_INFRA_REPO_NAME}"
+        assume_role = ProviderAssumeRoleArgs(role_arn=role_arn, session_name="pulumi")
+        provider = Provider(
+            f"central-infra-provider-for-{account.name}",
+            assume_role=assume_role,
+            allowed_account_ids=[account.id],
+            region=organization_home_region,
+            opts=ResourceOptions(parent=parent),
+        )
+        providers[account.id] = provider
+    return providers
 
 
 class AwsWorkloadPulumiBootstrap(ComponentResource):
@@ -31,34 +50,23 @@ class AwsWorkloadPulumiBootstrap(ComponentResource):
         central_iac_kms_key_arn: str,
     ):
         super().__init__("labauto:AwsWorkloadPulumiBootstrap", workload.name, None)
-        organization_home_region = get_config_str("proj:aws_org_home_region")
         all_accounts = [*workload.prod_accounts, *workload.staging_accounts, *workload.dev_accounts]
-        self.providers = {}
+        self.providers = create_providers(aws_accounts=all_accounts, parent=self)
         for account in all_accounts:
-            role_arn = f"arn:aws:iam::{account.id}:role/InfraDeploy--{CENTRAL_INFRA_REPO_NAME}"
-            assume_role = ProviderAssumeRoleArgs(role_arn=role_arn, session_name="pulumi")
-            provider = Provider(
-                f"central-infra-provider-for-{account.name}",
-                assume_role=assume_role,
-                allowed_account_ids=[account.id],
-                region=organization_home_region,
-                opts=ResourceOptions(parent=self),
-            )
-            self.providers[account.id] = provider
             _ = ssm.Parameter(
                 f"central-infra-state-bucket-name-in-{account.name}",
                 type=ssm.ParameterType.STRING,
-                name="/org-managed/infra-state-bucket-name",
+                name=f"{ORG_MANAGED_SSM_PARAM_PREFIX}/infra-state-bucket-name",
                 value=central_state_bucket_name,
-                opts=ResourceOptions(provider=provider, parent=self, delete_before_replace=True),
+                opts=ResourceOptions(provider=self.providers[account.id], parent=self, delete_before_replace=True),
                 tags=common_tags(),
             )
             _ = ssm.Parameter(
                 f"shared-kms-key-arn-in-{account.name}",
                 type=ssm.ParameterType.STRING,
-                name="/org-managed/infra-state-kms-key-arn",
+                name=f"{ORG_MANAGED_SSM_PARAM_PREFIX}/infra-state-kms-key-arn",
                 value=central_iac_kms_key_arn,
-                opts=ResourceOptions(provider=provider, parent=self, delete_before_replace=True),
+                opts=ResourceOptions(provider=self.providers[account.id], parent=self, delete_before_replace=True),
                 tags=common_tags(),
             )
 
