@@ -39,7 +39,9 @@ class WorkloadParams(ComponentResource):
             )
 
 
-def load_workload_info() -> tuple[dict[WorkloadName, AwsLogicalWorkload], dict[str, str]]:
+def load_workload_info(
+    *, exclude_central_infra_workload: bool = True
+) -> tuple[dict[WorkloadName, AwsLogicalWorkload], dict[str, str]]:
     ssm_client = boto3.client("ssm", region_name=get_config_str("proj:aws_org_home_region"))
 
     parameters: list[ParameterMetadataTypeDef] = []
@@ -80,4 +82,7 @@ def load_workload_info() -> tuple[dict[WorkloadName, AwsLogicalWorkload], dict[s
 
     workloads_info = [AwsLogicalWorkload.model_validate_json(param) for param in param_values]
     workloads_dict: dict[WorkloadName, AwsLogicalWorkload] = {workload.name: workload for workload in workloads_info}
+    if exclude_central_infra_workload:
+        # The Central Infra "workload" is unique and can't generally be managed by the same process as the other workloads
+        del workloads_dict["central-infra"]  # remove the Central Infra workload from the dictionary
     return workloads_dict, params_dict
