@@ -1,6 +1,7 @@
 import logging
 
 from ephemeral_pulumi_deploy import append_resource_suffix
+from ephemeral_pulumi_deploy import common_tags
 from ephemeral_pulumi_deploy import common_tags_native
 from pulumi import ComponentResource
 from pulumi import ResourceOptions
@@ -10,6 +11,12 @@ from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
 from pulumi_aws.iam import get_policy_document
 from pulumi_aws.organizations import get_organization
 from pulumi_aws_native import s3
+from pulumi_aws_native import ssm
+
+from aws_central_infrastructure.iac_management.lib import ORG_MANAGED_SSM_PARAM_PREFIX
+from aws_central_infrastructure.iac_management.lib import AwsLogicalWorkload
+from aws_central_infrastructure.iac_management.lib import create_providers
+from aws_central_infrastructure.iac_management.lib import load_workload_info
 
 logger = logging.getLogger(__name__)
 
@@ -164,4 +171,51 @@ class DistributorPackagesBucket(ComponentResource):
                     ]
                 ).json
             ),
+        )
+
+
+class SsmBucketsSsmParameters(ComponentResource):
+    def __init__(
+        self,
+        *,
+        workload_info: AwsLogicalWorkload,
+        distributor_packages_bucket: DistributorPackagesBucket,
+        manual_artifacts_bucket: ManualArtifactsBucket,
+    ):
+        super().__init__("labauto:SsmBucketsSsmParameters", append_resource_suffix(workload_info.name), None)
+        all_accounts = [*workload_info.prod_accounts, *workload_info.staging_accounts, *workload_info.dev_accounts]
+        for account in all_accounts:
+            self.providers = create_providers(aws_accounts=[account], parent=self)
+
+            _ = ssm.Parameter(
+                append_resource_suffix(
+                    f"distributor-packages-bucket-name-{workload_info.name}-{account.id}", max_length=100
+                ),
+                type=ssm.ParameterType.STRING,
+                name=f"{ORG_MANAGED_SSM_PARAM_PREFIX}/ssm-distributor-packages-bucket-name",
+                value=distributor_packages_bucket.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright thinks somehow the bucket name could be Output[None], which doesn't seem possible
+                opts=ResourceOptions(provider=self.providers[account.id], parent=self, delete_before_replace=True),
+                tags=common_tags(),
+            )
+            _ = ssm.Parameter(
+                append_resource_suffix(
+                    f"manual-artifacts-bucket-name-{workload_info.name}-{account.id}", max_length=100
+                ),
+                type=ssm.ParameterType.STRING,
+                name=f"{ORG_MANAGED_SSM_PARAM_PREFIX}/manual-artifacts-bucket-name",
+                value=manual_artifacts_bucket.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright thinks somehow the bucket name could be Output[None], which doesn't seem possible
+                opts=ResourceOptions(provider=self.providers[account.id], parent=self, delete_before_replace=True),
+                tags=common_tags(),
+            )
+
+
+def create_ssm_bucket_ssm_params(
+    *, distributor_packages_bucket: DistributorPackagesBucket, manual_artifacts_bucket: ManualArtifactsBucket
+) -> None:
+    workloads_dict, _ = load_workload_info()
+    for workload_info in workloads_dict.values():
+        _ = SsmBucketsSsmParameters(
+            workload_info=workload_info,
+            distributor_packages_bucket=distributor_packages_bucket,
+            manual_artifacts_bucket=manual_artifacts_bucket,
         )

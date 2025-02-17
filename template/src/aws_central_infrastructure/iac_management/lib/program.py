@@ -40,8 +40,6 @@ def pulumi_program() -> None:
     workloads_dict, params_dict = load_workload_info()
     providers: dict[AwsAccountId, Provider] = {}
     for workload_info in workloads_dict.values():
-        if workload_info.name == "central-infra":
-            continue  # don't bootstrap the Central Infra 'workload'---it's unique and has been bootstrapped already by the AWS Organization stack
         bootstrap = AwsWorkloadPulumiBootstrap(
             workload=workload_info,
             central_state_bucket_name=central_state_bucket_name,

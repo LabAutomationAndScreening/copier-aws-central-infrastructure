@@ -20,7 +20,7 @@ def pulumi_program() -> None:
     export("aws-account-id", aws_account_id)
 
     # Create Resources Here
-    workloads_dict, _ = load_workload_info()
+    workloads_dict, _ = load_workload_info(exclude_central_infra_workload=False)
     # Note: you must create any new users and deploy them before you can assign any permissions to them (otherwise the Preview will fail)
     create_users()
     create_permissions(workloads_dict)
