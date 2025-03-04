@@ -21,3 +21,4 @@ aws_region_for_stack: us-west-1
 central_infra_github_organization_name: foobar
 initial_iac_management_deploy_occurred: true
 identity_center_production_account_id: 123499989012
+configure_cloud_courier: true
