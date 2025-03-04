@@ -1,4 +1,4 @@
-import logging
+{% raw %}import logging
 
 from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
@@ -6,7 +6,8 @@ from pulumi import export
 
 from aws_central_infrastructure.iac_management.lib.workload_params import load_workload_info
 
-from ..permissions import create_permissions
+{% endraw %}{% if configure_cloud_courier %}{% raw %}from ..cloud_courier_permissions import configure_cloud_courier_permissions
+{% endraw %}{% endif %}{% raw %}from ..permissions import create_permissions
 from ..users import create_users
 
 logger = logging.getLogger(__name__)
@@ -24,3 +25,6 @@ def pulumi_program() -> None:
     # Note: If you are directly creating users (and not using your external SSO Identity Provider), you must create any new users and deploy them before you can assign any permissions to them (otherwise the Preview will fail)
     create_users()
     create_permissions(workloads_dict)
+
+    # Application-specific permissions managed by copier template{% endraw %}{% if configure_cloud_courier %}{% raw %}
+    configure_cloud_courier_permissions(workload_info=workloads_dict["cloud-courier"]){% endraw %}{% endif %}
