@@ -21,6 +21,6 @@ def pulumi_program() -> None:
 
     # Create Resources Here
     workloads_dict, _ = load_workload_info(exclude_central_infra_workload=False)
-    # Note: you must create any new users and deploy them before you can assign any permissions to them (otherwise the Preview will fail)
+    # Note: If you are directly creating users (and not using your external SSO Identity Provider), you must create any new users and deploy them before you can assign any permissions to them (otherwise the Preview will fail)
     create_users()
     create_permissions(workloads_dict)
