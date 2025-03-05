@@ -212,7 +212,6 @@ def create_cloud_courier_permissions(
     for protected_env_account in [
         *workload_info.prod_accounts,
         *workload_info.staging_accounts,
-        *workload_info.dev_accounts,  # TODO: remove before merge
     ]:
         _ = AwsSsoPermissionSetAccountAssignments(
             account_info=protected_env_account,
