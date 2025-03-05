@@ -87,10 +87,11 @@ configure_cloud_courier:
     help: Should Identity Center permissions be automatically configured to facilitate using Cloud Courier?
     default: no
 
-cloud_courier_repo_name:
+cloud_courier_infra_repo_name:
     type: str
     help: What is the name of the repository that contains the Cloud Courier Infrastructure?
     when: "{{ configure_cloud_courier }}"
+    default: "cloud-courier-infrastructure"
 
 # Additional Settings
 _min_copier_version: "9.4"
