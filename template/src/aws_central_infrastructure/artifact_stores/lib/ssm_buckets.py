@@ -106,6 +106,12 @@ class DistributorPackagesBucket(ComponentResource):
         # These artifacts are deployed to machines and devices. It's too much of a security risk to let people overwrite them, so setting up WORM.
         self.bucket = create_worm_bucket(resource_name="ssm-distributor-packages", parent=self)
         org_id = get_organization().id
+        principal_arns = [
+            "arn:aws:iam::*:role/InfraDeploy*",
+            "arn:aws:iam::*:role/InfraPreview*",
+            # TODO: figure out if there's any way around this limitation, so that the `AWSReservedSSO_LowRiskAccountAdminAccess` role can be specified instead of just '*'    https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html#principal-sessions
+            "*",
+        ]
         _ = s3.BucketPolicy(
             append_resource_suffix("distributor-packages"),
             opts=ResourceOptions(parent=self, delete_before_replace=True),
@@ -126,10 +132,7 @@ class DistributorPackagesBucket(ComponentResource):
                                 GetPolicyDocumentStatementConditionArgs(
                                     variable="aws:PrincipalArn",
                                     test="StringLike",
-                                    values=[
-                                        "arn:aws:iam::*:role/InfraDeploy*",
-                                        "arn:aws:iam::*:role/InfraPreview*",
-                                    ],
+                                    values=principal_arns,
                                 ),
                                 GetPolicyDocumentStatementConditionArgs(
                                     variable="aws:PrincipalOrgID",
@@ -153,10 +156,7 @@ class DistributorPackagesBucket(ComponentResource):
                                 GetPolicyDocumentStatementConditionArgs(
                                     variable="aws:PrincipalArn",
                                     test="StringLike",
-                                    values=[
-                                        "arn:aws:iam::*:role/InfraDeploy*",
-                                        "arn:aws:iam::*:role/InfraPreview*",
-                                    ],
+                                    values=principal_arns,
                                 ),
                                 GetPolicyDocumentStatementConditionArgs(
                                     variable="aws:PrincipalOrgID",
