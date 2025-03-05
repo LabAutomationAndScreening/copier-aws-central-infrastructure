@@ -12,6 +12,8 @@ To create a new repository using this template:
 4. Commit the changes
 5. Rebuild your new devcontainer
 
+An example of a repository using this template is: https://github.com/ejfine/aws-central-infrastructure
+
 
 
 # Development
