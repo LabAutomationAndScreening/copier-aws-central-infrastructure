@@ -114,9 +114,9 @@ VIEW_ONLY_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
         "AWSLambda_ReadOnlyAccess",  # review traces and logs for debugging Lambdas easily through the console
         "CloudWatchEventsReadOnlyAccess",  # see information about event rules and patterns
         "AmazonEventBridgeReadOnlyAccess",  # see basic metrics about Event Bridges to troubleshoot
-        "AmazonEventBridgeSchemasReadOnlyAccess",  # look at basic metrics about EventBridge Schemas to troubleshoot
         "AmazonEC2ContainerRegistryReadOnly",  # describe ECR images,
         "AWSBillingReadOnlyAccess",  # view billing information to help optimize costs
+        # TODO: figure out how to add back in AmazonEventBridgeSchemasReadOnlyAccess permission...but we're at the limit of managed policies that can be attached currently
     ],
 )
 
