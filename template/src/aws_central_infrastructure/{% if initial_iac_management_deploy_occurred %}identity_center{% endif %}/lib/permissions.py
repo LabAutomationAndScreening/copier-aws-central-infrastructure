@@ -115,7 +115,8 @@ VIEW_ONLY_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
         "CloudWatchEventsReadOnlyAccess",  # see information about event rules and patterns
         "AmazonEventBridgeReadOnlyAccess",  # see basic metrics about Event Bridges to troubleshoot
         "AmazonEventBridgeSchemasReadOnlyAccess",  # look at basic metrics about EventBridge Schemas to troubleshoot
-        "AmazonEC2ContainerRegistryReadOnly",  # describe ECR images
+        "AmazonEC2ContainerRegistryReadOnly",  # describe ECR images,
+        "AWSBillingReadOnlyAccess",  # view billing information to help optimize costs
     ],
 )
 
