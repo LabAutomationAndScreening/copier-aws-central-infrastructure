@@ -9,6 +9,7 @@ from pulumi_aws_native import Provider
 from pulumi_aws_native import ssm
 
 from .github_oidc_lib import WorkloadName
+from .shared_lib import MANAGEMENT_ACCOUNT_ID_PARAM_NAME
 from .shared_lib import WORKLOAD_INFO_SSM_PARAM_PREFIX
 from .shared_lib import AwsLogicalWorkload
 
@@ -86,3 +87,13 @@ def load_workload_info(
         # The Central Infra "workload" is unique and can't generally be managed by the same process as the other workloads
         del workloads_dict["central-infra"]  # remove the Central Infra workload from the dictionary
     return workloads_dict, params_dict
+
+
+def get_management_account_id() -> str:
+    ssm_client = boto3.client("ssm", region_name=get_config_str("proj:aws_org_home_region"))
+    response = ssm_client.get_parameter(  # TODO: consider using get_parameters for just a single API call
+        Name=MANAGEMENT_ACCOUNT_ID_PARAM_NAME,
+    )
+    param_dict = response["Parameter"]
+    assert "Value" in param_dict, f"Value not found in parameter {param_dict}"
+    return param_dict["Value"]

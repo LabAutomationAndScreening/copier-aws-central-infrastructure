@@ -7,6 +7,7 @@ from pulumi_aws import identitystore as identitystore_classic
 from pulumi_aws import ssoadmin
 from pydantic import BaseModel
 
+from aws_central_infrastructure.iac_management.lib import get_management_account_id
 from aws_central_infrastructure.iac_management.lib.shared_lib import AwsAccountInfo
 from aws_central_infrastructure.iac_management.lib.shared_lib import AwsLogicalWorkload
 
@@ -182,3 +183,26 @@ class DefaultWorkloadPermissionAssignments(BaseModel):
                 permission_set=LOW_RISK_ADMIN_PERM_SET_CONTAINER.permission_set,
                 users=self.users,
             )
+
+
+def create_org_admin_permissions(
+    *, workloads_dict: dict[str, AwsLogicalWorkload], users: list[UserInfo] | None = None
+) -> None:
+    view_only_permission_set = VIEW_ONLY_PERM_SET_CONTAINER.permission_set
+
+    _ = AwsSsoPermissionSetAccountAssignments(
+        account_info=workloads_dict["central-infra"].prod_accounts[0],
+        permission_set=view_only_permission_set,
+        users=users,
+    )
+    _ = AwsSsoPermissionSetAccountAssignments(
+        account_info=workloads_dict["identity-center"].prod_accounts[0],
+        permission_set=view_only_permission_set,
+        users=users,
+    )
+
+    _ = AwsSsoPermissionSetAccountAssignments(
+        account_info=AwsAccountInfo(id=get_management_account_id(), name="management"),
+        permission_set=view_only_permission_set,
+        users=users,
+    )
