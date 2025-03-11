@@ -56,9 +56,9 @@ class CentralCodeArtifact(ComponentResource):
                         resources=["*"],
                         conditions=[
                             GetPolicyDocumentStatementConditionArgs(
-                                test="StringEquals",
-                                variable="aws:PrincipalOrgID",
                                 values=[org_id],
+                                variable="aws:PrincipalOrgID",
+                                test="StringEquals",
                             ),
                         ],
                     ),
@@ -91,8 +91,8 @@ class CentralCodeArtifact(ComponentResource):
                             conditions=[
                                 GetPolicyDocumentStatementConditionArgs(
                                     test="StringEquals",
-                                    variable="aws:PrincipalOrgID",
                                     values=[org_id],
+                                    variable="aws:PrincipalOrgID",
                                 ),
                             ],
                         ),
