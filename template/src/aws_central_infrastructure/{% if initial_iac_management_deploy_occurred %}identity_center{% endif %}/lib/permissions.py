@@ -109,14 +109,15 @@ VIEW_ONLY_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
         "AWSSupportAccess",  # Allow users to request AWS support for technical questions.
         "job-function/ViewOnlyAccess",  # wide ranging attribute view access across a variety of services
         "CloudWatchReadOnlyAccess",  # be able to read CloudWatch logs/metrics/etc
-        "AmazonAppStreamReadOnlyAccess",  # look at the details of stack/fleet information to troubleshoot any issues
         "AmazonSSMReadOnlyAccess",  # look at SSM fleet/hybrid activation details
         "AWSLambda_ReadOnlyAccess",  # review traces and logs for debugging Lambdas easily through the console
-        "CloudWatchEventsReadOnlyAccess",  # see information about event rules and patterns
         "AmazonEventBridgeReadOnlyAccess",  # see basic metrics about Event Bridges to troubleshoot
         "AmazonEC2ContainerRegistryReadOnly",  # describe ECR images,
         "AWSBillingReadOnlyAccess",  # view billing information to help optimize costs
         # TODO: figure out how to add back in AmazonEventBridgeSchemasReadOnlyAccess permission...but we're at the limit of managed policies that can be attached currently
+        # TODO: figure out how to add back in "AmazonAppStreamReadOnlyAccess",  # look at the details of stack/fleet information to troubleshoot any issues
+        # TODO: "CloudWatchEventsReadOnlyAccess",  # see information about event rules and patterns
+        # CostOptimizationHubReadOnlyAccess
     ],
 )
 
