@@ -4,17 +4,21 @@ from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
 from ephemeral_pulumi_deploy import get_config_str
+from ephemeral_pulumi_deploy.utils import common_tags
 from pulumi import ResourceOptions
 from pulumi import export
 from pulumi_aws_native import Provider
 from pulumi_aws_native import s3
+from pulumi_aws_native import ssm
 
 from ..github_oidc import generate_all_oidc
 from .github_oidc_lib import AwsAccountId
 from .github_oidc_lib import deploy_all_oidc
 from .pulumi_bootstrap import AwsWorkloadPulumiBootstrap
 from .pulumi_bootstrap import create_bucket_policy
+from .shared_lib import MANAGEMENT_ACCOUNT_ID_PARAM_NAME
 from .workload_params import WorkloadParams
+from .workload_params import get_management_account_id
 from .workload_params import load_workload_info
 
 logger = logging.getLogger(__name__)
@@ -50,6 +54,18 @@ def pulumi_program() -> None:
         name="identity-center",
         params_dict=params_dict,
         provider=providers[workloads_dict["identity-center"].prod_accounts[0].id],
+    )
+
+    _ = ssm.Parameter(
+        append_resource_suffix("identity-center-management-account-id", max_length=75),
+        type=ssm.ParameterType.STRING,
+        name=MANAGEMENT_ACCOUNT_ID_PARAM_NAME,
+        description="AWS Org Management Account ID",
+        tags=common_tags(),
+        value=get_management_account_id(),
+        opts=ResourceOptions(
+            provider=providers[workloads_dict["identity-center"].prod_accounts[0].id], delete_before_replace=True
+        ),
     )
     all_oidc = generate_all_oidc(workloads_info=workloads_dict)
     deploy_all_oidc(

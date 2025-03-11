@@ -5,6 +5,7 @@ from pydantic import Field
 
 ORG_MANAGED_SSM_PARAM_PREFIX = "/org-managed"
 WORKLOAD_INFO_SSM_PARAM_PREFIX = f"{ORG_MANAGED_SSM_PARAM_PREFIX}/logical-workloads"
+MANAGEMENT_ACCOUNT_ID_PARAM_NAME = f"{ORG_MANAGED_SSM_PARAM_PREFIX}/management-account-id"
 
 
 class AwsAccountInfo(BaseModel, frozen=True):
