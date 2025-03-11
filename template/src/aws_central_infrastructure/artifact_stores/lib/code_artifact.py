@@ -1,3 +1,4 @@
+import json
 import logging
 
 from ephemeral_pulumi_deploy import append_resource_suffix
@@ -25,44 +26,79 @@ class CentralCodeArtifact(ComponentResource):
         self,
     ):
         super().__init__("labauto:CentralCodeArtifact", append_resource_suffix(), None)
-        org_read_access_policy = get_policy_document(
-            statements=[
-                GetPolicyDocumentStatementArgs(
-                    effect="Allow",
-                    actions=[
-                        "codeartifact:DescribePackage",
-                        "codeartifact:DescribePackageVersion",
-                        "codeartifact:DescribeRepository",
-                        "codeartifact:GetPackageVersionReadme",
-                        "codeartifact:GetRepositoryEndpoint",
-                        "codeartifact:GetRepositoryPermissionsPolicy",
-                        "codeartifact:ListPackageVersionAssets",
-                        "codeartifact:ListPackageVersionDependencies",
-                        "codeartifact:ListPackageVersions",
-                        "codeartifact:ListPackages",
-                        "codeartifact:ListTagsForResource",
-                        "codeartifact:ReadFromRepository",
-                    ],
-                    principals=[
-                        GetPolicyDocumentStatementPrincipalArgs(
-                            type="*",
-                            identifiers=["*"],  # Allows all principals
-                        )
-                    ],
-                    resources=["*"],
-                    conditions=[
-                        GetPolicyDocumentStatementConditionArgs(
-                            test="StringEquals",
-                            variable="aws:PrincipalOrgID",
-                            values=[get_organization().id],  # Limit to the AWS Organization
-                        ),
-                    ],
-                ),
-            ]
-        ).json
+        org_id = get_organization().id
+        org_read_access_policy = json.loads(
+            get_policy_document(
+                statements=[
+                    GetPolicyDocumentStatementArgs(
+                        effect="Allow",
+                        sid="OrgReadAccess",
+                        actions=[
+                            "codeartifact:DescribePackage",
+                            "codeartifact:DescribePackageVersion",
+                            "codeartifact:DescribeRepository",
+                            "codeartifact:GetPackageVersionReadme",
+                            "codeartifact:GetRepositoryEndpoint",
+                            "codeartifact:GetRepositoryPermissionsPolicy",
+                            "codeartifact:ListPackageVersionAssets",
+                            "codeartifact:ListPackageVersionDependencies",
+                            "codeartifact:ListPackageVersions",
+                            "codeartifact:ListPackages",
+                            "codeartifact:ListTagsForResource",
+                            "codeartifact:ReadFromRepository",
+                        ],
+                        principals=[
+                            GetPolicyDocumentStatementPrincipalArgs(
+                                type="*",
+                                identifiers=["*"],
+                            )
+                        ],
+                        resources=["*"],
+                        conditions=[
+                            GetPolicyDocumentStatementConditionArgs(
+                                test="StringEquals",
+                                variable="aws:PrincipalOrgID",
+                                values=[org_id],
+                            ),
+                        ],
+                    ),
+                ]
+            ).json
+        )
         domain = codeartifact.Domain(
             append_resource_suffix(),
             domain_name=CODE_ARTIFACT_DOMAIN_NAME,
+            permissions_policy_document=json.loads(
+                get_policy_document(
+                    statements=[
+                        GetPolicyDocumentStatementArgs(
+                            effect="Allow",
+                            sid="OrgReadAccess",
+                            actions=[
+                                "codeartifact:DescribeDomain",
+                                "codeartifact:GetAuthorizationToken",
+                                "codeartifact:GetDomainPermissionsPolicy",
+                                "codeartifact:ListRepositoriesInDomain",
+                                "sts:GetServiceBearerToken",
+                            ],
+                            principals=[
+                                GetPolicyDocumentStatementPrincipalArgs(
+                                    type="*",
+                                    identifiers=["*"],
+                                )
+                            ],
+                            resources=["*"],
+                            conditions=[
+                                GetPolicyDocumentStatementConditionArgs(
+                                    test="StringEquals",
+                                    variable="aws:PrincipalOrgID",
+                                    values=[org_id],
+                                ),
+                            ],
+                        ),
+                    ]
+                ).json
+            ),
             opts=ResourceOptions(parent=self),
             tags=common_tags_native(),
         )
