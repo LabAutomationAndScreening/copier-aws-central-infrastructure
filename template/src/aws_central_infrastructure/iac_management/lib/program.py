@@ -57,7 +57,7 @@ def pulumi_program() -> None:
     )
 
     _ = ssm.Parameter(
-        append_resource_suffix("identity-center-management-account-id"),
+        append_resource_suffix("identity-center-management-account-id", max_length=75),
         type=ssm.ParameterType.STRING,
         name=MANAGEMENT_ACCOUNT_ID_PARAM_NAME,
         description="AWS Org Management Account ID",
