@@ -7,7 +7,6 @@ from pulumi_aws import identitystore as identitystore_classic
 from pulumi_aws import ssoadmin
 from pydantic import BaseModel
 
-from aws_central_infrastructure.iac_management.lib import get_management_account_id
 from aws_central_infrastructure.iac_management.lib.shared_lib import AwsAccountInfo
 from aws_central_infrastructure.iac_management.lib.shared_lib import AwsLogicalWorkload
 
@@ -202,7 +201,7 @@ def create_org_admin_permissions(
     )
 
     _ = AwsSsoPermissionSetAccountAssignments(
-        account_info=AwsAccountInfo(id=get_management_account_id(), name="management"),
+        account_info=workloads_dict["billing-delegate"].prod_accounts[0],
         permission_set=view_only_permission_set,
         users=users,
     )
