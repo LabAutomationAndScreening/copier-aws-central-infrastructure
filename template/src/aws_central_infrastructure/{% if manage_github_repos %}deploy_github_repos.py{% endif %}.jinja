@@ -18,7 +18,9 @@ def generate_stack_config() -> dict[str, Any]:
     github_repo_name = "{% endraw %}{{ repo_name }}{% raw %}"
     stack_config["proj:github_repo_name"] = github_repo_name
 
-    stack_config["proj:git_repository_url"] = ConfigValue(value=f"https://github.com/{% endraw %}{{ central_infra_github_organization_name }}{% raw %}/{github_repo_name}")
+    stack_config["proj:git_repository_url"] = ConfigValue(value=f"https://github.com/{% endraw %}{{ repo_org_name }}{% raw %}/{github_repo_name}")
+
+    stack_config["github:owner"] = ConfigValue(value="{% endraw %}{{ repo_org_name }}{% raw %}")
     return stack_config
 
 
