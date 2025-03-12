@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any
 from typing import override
 
@@ -5,7 +6,10 @@ from pulumi import ComponentResource
 from pulumi import ResourceOptions
 from pulumi_aws import identitystore as identitystore_classic
 from pulumi_aws import ssoadmin
+from pulumi_aws.iam import GetPolicyDocumentStatementArgs
+from pulumi_aws.iam import get_policy_document
 from pydantic import BaseModel
+from pydantic import Field
 
 from aws_central_infrastructure.iac_management.lib.shared_lib import AwsAccountInfo
 from aws_central_infrastructure.iac_management.lib.shared_lib import AwsLogicalWorkload
@@ -14,6 +18,7 @@ from .lib import ORG_INFO
 from .lib import UserAttributes
 from .lib import UserInfo
 from .lib import Username
+from .lib import create_read_state_inline_policy
 
 _all_users: dict[Username, UserAttributes] = {}
 
@@ -78,10 +83,16 @@ class AwsSsoPermissionSet(ComponentResource):
 class AwsSsoPermissionSetContainer(BaseModel):
     name: str
     description: str
-    managed_policies: list[str]
+    managed_policies: list[str] = Field(
+        default_factory=list,
+        max_length=10,  # AWS default limit
+    )
+    inline_policy_callable: Callable[[], str] | None = None
     _permission_set: AwsSsoPermissionSet | None = None
 
     def create_permission_set(self, inline_policy: str | None = None) -> AwsSsoPermissionSet:
+        if inline_policy is None and self.inline_policy_callable is not None:
+            inline_policy = self.inline_policy_callable()  # TODO: unit test this
         self._permission_set = AwsSsoPermissionSet(
             name=self.name,
             description=self.description,
@@ -96,6 +107,39 @@ class AwsSsoPermissionSetContainer(BaseModel):
         return self._permission_set
 
 
+def create_manual_secrets_entry_inline_policy() -> str:
+    return get_policy_document(
+        statements=[
+            GetPolicyDocumentStatementArgs(
+                sid="AllResources",
+                effect="Allow",
+                actions=[
+                    "secretsmanager:ListSecrets",  # when trying to use `secretsmanager:Name` and `secretsmanager:SecretId` to restrict this, it wouldn't let any be listed
+                ],
+                resources=["*"],
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="SpecificSecrets",
+                effect="Allow",
+                actions=[
+                    "secretsmanager:DescribeSecret",
+                    "secretsmanager:GetSecretValue",
+                    "secretsmanager:ListSecretVersionIds",
+                    "secretsmanager:PutSecretValue",
+                ],
+                resources=["arn:aws:secretsmanager:*:*:secret:/manually-entered-secrets/*"],
+            ),
+        ]
+    ).json
+
+
+MANUAL_SECRETS_ENTRY_PERM_SET_CONTAINER = (
+    AwsSsoPermissionSetContainer(  # TODO: set relay state to SecretsManager landing page
+        name="ManualSecretsEntry",
+        description="The ability to manually update secrets into the secrets manager.",
+        inline_policy_callable=create_manual_secrets_entry_inline_policy,
+    )
+)
 LOW_RISK_ADMIN_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
     name="LowRiskAccountAdminAccess",
     description="Low Risk Account Admin Access",
@@ -119,6 +163,7 @@ VIEW_ONLY_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
         # TODO: figure out how to add back in "AmazonAppStreamReadOnlyAccess",  # look at the details of stack/fleet information to troubleshoot any issues
         # TODO: "CloudWatchEventsReadOnlyAccess",  # see information about event rules and patterns
     ],
+    inline_policy_callable=create_read_state_inline_policy,
 )
 
 
@@ -190,10 +235,16 @@ def create_org_admin_permissions(
     *, workloads_dict: dict[str, AwsLogicalWorkload], users: list[UserInfo] | None = None
 ) -> None:
     view_only_permission_set = VIEW_ONLY_PERM_SET_CONTAINER.permission_set
+    manual_secrets_entry_permission_set = MANUAL_SECRETS_ENTRY_PERM_SET_CONTAINER.permission_set
 
     _ = AwsSsoPermissionSetAccountAssignments(
         account_info=workloads_dict["central-infra"].prod_accounts[0],
         permission_set=view_only_permission_set,
+        users=users,
+    )
+    _ = AwsSsoPermissionSetAccountAssignments(
+        account_info=workloads_dict["central-infra"].prod_accounts[0],
+        permission_set=manual_secrets_entry_permission_set,
         users=users,
     )
     _ = AwsSsoPermissionSetAccountAssignments(

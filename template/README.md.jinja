@@ -21,7 +21,8 @@ To create a new repository using this template:
 ## Using Pulumi
 Run a Pulumi Preview for the IaC Management project: `uv run python -m aws_central_infrastructure.deploy_iac_management --stack=prod`
 Run a Pulumi Preview for the Artifact Stores project: `uv run python -m aws_central_infrastructure.deploy_artifact_stores --stack=prod`
-Run a Pulumi Preview for the Identity Center project: `uv run python -m aws_central_infrastructure.deploy_identity_center --stack=prod`
+Run a Pulumi Preview for the Identity Center project: `uv run python -m aws_central_infrastructure.deploy_identity_center --stack=prod`{% endraw %}{% if manage_github_repos %}{% raw%}
+Run a Pulumi Preview for the GitHub Repositories project: `uv run python -m aws_central_infrastructure.deploy_github_repos --stack=prod`{% endraw %}{% endif %}{% raw %}
 
 
 ## Updating from the template
