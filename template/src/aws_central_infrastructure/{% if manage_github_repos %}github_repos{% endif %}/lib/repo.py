@@ -97,6 +97,7 @@ class GithubRepo(ComponentResource):
 
 def create_repos(configs: Iterable[GithubRepoConfig] | None = None) -> None:
     # Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write
+    # After the initial deployment which creates the secret, go in and use the Manual Secrets permission set to update the secret with the real token, then you can create repos
     _ = secretsmanager.Secret(
         append_resource_suffix("github-access-token"),
         name="/manually-entered-secrets/iac/github-access-token",
