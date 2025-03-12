@@ -61,10 +61,10 @@ jobs:
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
       AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
-{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}
+{% endraw %}{% if manage_github_repos %}{% raw %}
   github-repos-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
-    needs: [ iac-management-pulumi, artifact-stores-pulumi ] # Identity Center depends on outputs from the Artifact Stores stack to set up permission sets
+    needs: [ lint ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
@@ -109,7 +109,7 @@ jobs:
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ lint, iac-management-pulumi, artifact-stores-pulumi{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}, identity-center-pulumi{% endraw %}{% endif %}{% if initial_iac_management_deploy_occurred %}{% raw %}, github-repos-pulumi{% endraw %}{% endif %}{% raw %} ]
+    needs: [ lint, iac-management-pulumi, artifact-stores-pulumi{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}, identity-center-pulumi{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %}, github-repos-pulumi{% endraw %}{% endif %}{% raw %} ]
     if: always()
     steps:
       - name: fail if prior job failure
