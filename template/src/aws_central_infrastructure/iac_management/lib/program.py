@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 
 from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import get_aws_account_id
@@ -11,8 +12,11 @@ from pulumi_aws_native import Provider
 from pulumi_aws_native import s3
 from pulumi_aws_native import ssm
 
-from ..github_oidc import generate_all_oidc
+from .application_oidc import create_application_oidc_if_needed
+from .application_oidc import generate_all_oidc
 from .github_oidc_lib import AwsAccountId
+from .github_oidc_lib import GithubOidcConfig
+from .github_oidc_lib import WorkloadName
 from .github_oidc_lib import deploy_all_oidc
 from .pulumi_bootstrap import AwsWorkloadPulumiBootstrap
 from .pulumi_bootstrap import create_bucket_policy
@@ -67,8 +71,12 @@ def pulumi_program() -> None:
             provider=providers[workloads_dict["identity-center"].prod_accounts[0].id], delete_before_replace=True
         ),
     )
-    all_oidc = generate_all_oidc(workloads_info=workloads_dict)
+    all_oidc: dict[WorkloadName, list[GithubOidcConfig]] = defaultdict(list)
+    create_application_oidc_if_needed(all_oidc=all_oidc, workloads_info=workloads_dict)
+
+    generate_all_oidc(workloads_info=workloads_dict, all_oidc=all_oidc)
+    full_workloads_dict, _ = load_workload_info(exclude_central_infra_workload=False)
     deploy_all_oidc(
-        all_oidc=[(workloads_dict[workload_name], value) for workload_name, value in all_oidc.items()],
+        all_oidc=[(full_workloads_dict[workload_name], value) for workload_name, value in all_oidc.items()],
         providers=providers,
     )
