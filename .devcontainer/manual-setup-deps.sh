@@ -4,7 +4,7 @@
 set -ex
 
 # Ensure that uv won't use the default system Python
-python_version="3.13.1"
+python_version="3.13.2"
 
 # Parse arguments
 skip_lock=false

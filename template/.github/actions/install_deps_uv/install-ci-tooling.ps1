@@ -3,7 +3,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-irm https://astral.sh/uv/0.6.3/install.ps1 | iex
+irm https://astral.sh/uv/0.6.6/install.ps1 | iex
 
 # Add uv to path (in github runner)
 $env:Path = "C:\Users\runneradmin\.local\bin;$env:Path"
@@ -11,7 +11,7 @@ $env:Path = "C:\Users\runneradmin\.local\bin;$env:Path"
 & uv --version
 
 # Ensure that uv won't use the default system Python
-$default_version = "3.13.1"
+$default_version = "3.13.2"
 
 # Check if an argument is provided; if not, use the default version
 if ($args.Count -eq 0) {
