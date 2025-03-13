@@ -54,6 +54,7 @@ class GithubRepo(ComponentResource):
             squash_merge_commit_title=config.squash_merge_commit_title,
             squash_merge_commit_message=config.squash_merge_commit_message,
             auto_init=True,
+            topics=["managed-by-aws-central-infrastructure-iac-repo"],
             opts=ResourceOptions(provider=provider, parent=self),
         )
         bypass_actors: Sequence[RepositoryRulesetBypassActorArgs] | None = None
@@ -80,7 +81,10 @@ class GithubRepo(ComponentResource):
                 non_fast_forward=True,
                 required_status_checks=RepositoryRulesetRulesRequiredStatusChecksArgs(
                     required_checks=[
-                        RepositoryRulesetRulesRequiredStatusChecksRequiredCheckArgs(context="required-check")
+                        RepositoryRulesetRulesRequiredStatusChecksRequiredCheckArgs(
+                            context="required-check",
+                            integration_id=15368,  # the ID for Github Actions
+                        )
                     ],
                     strict_required_status_checks_policy=config.require_branch_to_be_up_to_date_before_merge,
                 ),
