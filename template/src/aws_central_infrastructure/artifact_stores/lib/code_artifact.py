@@ -118,6 +118,7 @@ class CentralCodeArtifact(ComponentResource):
         _ = codeartifact.Repository(
             append_resource_suffix("primary"),
             domain_name=domain.domain_name,
+            description="The normal place to install from. This is where production-ready packages are published to.",
             repository_name=PRIMARY_REPO_NAME,
             upstreams=[upstream_repo.repository_name for upstream_repo in upstream_repos],
             permissions_policy_document=org_read_access_policy,
@@ -128,6 +129,7 @@ class CentralCodeArtifact(ComponentResource):
             append_resource_suffix("staging"),
             domain_name=domain.domain_name,
             repository_name=STAGING_REPO_NAME,
+            description="A staging repository for testing packages before promoting to production.",
             upstreams=[upstream_repo.repository_name for upstream_repo in upstream_repos],
             permissions_policy_document=org_read_access_policy,
             opts=ResourceOptions(parent=self),
