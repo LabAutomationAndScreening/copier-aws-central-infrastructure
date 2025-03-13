@@ -24,7 +24,8 @@ use_windows_in_ci:
 python_version:
     type: str
     help: What version of Python is used for development?
-    default: "3.13.1"
+    default: "3.13.2"
+
 
 
 aws_identity_center_id:

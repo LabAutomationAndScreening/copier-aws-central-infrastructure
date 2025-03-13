@@ -7,7 +7,7 @@ $PSDefaultParameterValues['*:ErrorAction'] = 'Stop'
 
 
 # Ensure that uv won't use the default system Python
-$default_version="3.13.1"
+$default_version="3.13.2"
 
 # Check if an argument is provided; if not, use the default version
 if ($args.Count -eq 0) {

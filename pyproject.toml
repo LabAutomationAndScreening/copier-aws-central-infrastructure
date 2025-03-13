@@ -3,7 +3,7 @@ name = "copier-aws-central-infrastructure"
 version = "0.1.0"
 description = "Managing Central Infrastructure of an AWS Organization"
 readme = "README.md"
-requires-python = ">=3.13.1"
+requires-python = ">=3.13.2"
 dependencies = [
     # Managed by upstream template
     "pytest>=8.3.4",

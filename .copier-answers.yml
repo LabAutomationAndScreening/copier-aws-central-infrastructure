@@ -4,7 +4,7 @@ _src_path: gh:LabAutomationAndScreening/copier-base-template.git
 description: Managing Central Infrastructure of an AWS Organization
 python_ci_versions:
 - 3.13.2
-python_version: 3.13.1
+python_version: 3.13.2
 repo_name: copier-aws-central-infrastructure
 repo_org_name: LabAutomationAndScreening
 ssh_port_number: 58573
