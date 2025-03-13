@@ -80,7 +80,10 @@ class GithubRepo(ComponentResource):
                 non_fast_forward=True,
                 required_status_checks=RepositoryRulesetRulesRequiredStatusChecksArgs(
                     required_checks=[
-                        RepositoryRulesetRulesRequiredStatusChecksRequiredCheckArgs(context="required-check")
+                        RepositoryRulesetRulesRequiredStatusChecksRequiredCheckArgs(
+                            context="required-check",
+                            integration_id=15368,  # the ID for Github Actions
+                        )
                     ],
                     strict_required_status_checks_policy=config.require_branch_to_be_up_to_date_before_merge,
                 ),
