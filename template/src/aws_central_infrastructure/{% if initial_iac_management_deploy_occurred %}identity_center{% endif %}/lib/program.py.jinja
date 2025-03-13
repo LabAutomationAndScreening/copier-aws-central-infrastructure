@@ -3,6 +3,9 @@
 from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
 from pulumi import export
+from pulumi_aws.iam import GetPolicyDocumentStatementArgs
+from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
+from pulumi_aws.iam import get_policy_document
 
 from aws_central_infrastructure.iac_management.lib.shared_lib import AwsLogicalWorkload
 from aws_central_infrastructure.iac_management.lib.workload_params import load_workload_info
@@ -10,6 +13,7 @@ from aws_central_infrastructure.iac_management.lib.workload_params import load_w
 {% endraw %}{% if configure_cloud_courier %}{% raw %}from ..cloud_courier_permissions import configure_cloud_courier_permissions
 {% endraw %}{% endif %}{% raw %}from ..permissions import create_permissions
 from ..users import create_users
+from .lib import all_created_users
 from .permissions import LOW_RISK_ADMIN_PERM_SET_CONTAINER
 from .permissions import MANUAL_SECRETS_ENTRY_PERM_SET_CONTAINER
 from .permissions import VIEW_ONLY_PERM_SET_CONTAINER
