@@ -54,6 +54,7 @@ class GithubRepo(ComponentResource):
             squash_merge_commit_title=config.squash_merge_commit_title,
             squash_merge_commit_message=config.squash_merge_commit_message,
             auto_init=True,
+            topics=["managed-by-aws-central-infrastructure-iac-repo"],
             opts=ResourceOptions(provider=provider, parent=self),
         )
         bypass_actors: Sequence[RepositoryRulesetBypassActorArgs] | None = None
