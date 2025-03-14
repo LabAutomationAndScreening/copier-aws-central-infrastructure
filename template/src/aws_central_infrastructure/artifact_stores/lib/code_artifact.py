@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from pydantic import Field
 
 from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_GITHUB_ORG_NAME
+from aws_central_infrastructure.iac_management.lib import CODE_ARTIFACT_SERVICE_BEARER_STATEMENT
 from aws_central_infrastructure.iac_management.lib import GITHUB_OIDC_URL
 from aws_central_infrastructure.iac_management.lib import GithubOidcConfig
 from aws_central_infrastructure.iac_management.lib import create_oidc_assume_role_policy
@@ -168,19 +169,6 @@ class CentralCodeArtifact(ComponentResource):
             )
 
 
-def create_code_artifact_package_arn_2(
-    *,
-    ca_repo: codeartifact.Repository,
-    ca_domain: codeartifact.Domain,
-    package_type: Literal["pypi", "npm", "nuget"],
-    package_namespace: str = "",
-    package_name: str,
-) -> Output[str]:
-    return Output.all(ca_domain.domain_name, ca_repo.name).apply(
-        lambda args: f"arn:aws:codeartifact:{pulumi_aws.config.region}:{get_aws_account_id()}:package:{args[0]}:{args[1]}/{package_type}/{package_namespace}/{package_name}"
-    )
-
-
 def create_code_artifact_package_arn(
     *,
     ca_repo_name: str,
@@ -189,7 +177,7 @@ def create_code_artifact_package_arn(
     package_namespace: str = "",
     package_name: str,
 ) -> str:
-    return f"arn:aws:codeartifact:{pulumi_aws.config.region}:{get_aws_account_id()}:package:{ca_domain_name}:{ca_repo_name}/{package_type}/{package_namespace}/{package_name}"
+    return f"arn:aws:codeartifact:{pulumi_aws.config.region}:{get_aws_account_id()}:package/{ca_domain_name}/{ca_repo_name}/{package_type}/{package_namespace}/{package_name}"
 
 
 class RepoPublishingRoles(ComponentResource):
@@ -206,28 +194,45 @@ class RepoPublishingRoles(ComponentResource):
             None,
             opts=ResourceOptions(parent=code_artifact),
         )
+        self._central_infra_oidc_provider_arn = central_infra_oidc_provider_arn
         self._package_claims = package_claims
         self._code_artifact = code_artifact
 
-        role_policy = iam.RolePolicyArgs(
-            policy_name="PublishPackagesToCodeArtifact",
-            policy_document=self._create_role_policy_document().json,
-        )
         publish_to_staging_config = GithubOidcConfig(
             aws_account_id=get_aws_account_id(),
             repo_org=package_claims.repo_org,
             repo_name=package_claims.repo_name,
             role_name=f"GHA-CA-Staging-{package_claims.repo_name}",
-            role_policy=role_policy,
+            role_policy=iam.RolePolicyArgs(
+                policy_name="PublishPackagesToCodeArtifact",
+                policy_document=self._create_role_policy_document().json,
+            ),
         )
-        assert publish_to_staging_config.role_policy is not None
+        self._create_role(oidc_config=publish_to_staging_config)
+        publish_to_primary_config = GithubOidcConfig(
+            aws_account_id=get_aws_account_id(),
+            repo_org=package_claims.repo_org,
+            repo_name=package_claims.repo_name,
+            role_name=f"GHA-CA-Primary-{package_claims.repo_name}",
+            role_policy=iam.RolePolicyArgs(
+                policy_name="PublishPackagesToCodeArtifact",
+                policy_document=self._create_role_policy_document(for_primary=True).json,
+            ),
+        )
+        self._create_role(oidc_config=publish_to_primary_config)
+
+    def _create_role(
+        self,
+        oidc_config: GithubOidcConfig,
+    ):
+        assert oidc_config.role_policy is not None
         _ = iam.Role(
-            f"github-oidc--{publish_to_staging_config.role_name}",
-            role_name=publish_to_staging_config.role_name,
+            f"github-oidc--{oidc_config.role_name}",
+            role_name=oidc_config.role_name,
             assume_role_policy_document=create_oidc_assume_role_policy(
-                oidc_config=publish_to_staging_config, provider_arn=central_infra_oidc_provider_arn
+                oidc_config=oidc_config, provider_arn=self._central_infra_oidc_provider_arn
             ).json,
-            policies=[publish_to_staging_config.role_policy],
+            policies=[oidc_config.role_policy],
             tags=common_tags_native(),
             opts=ResourceOptions(parent=self),
         )
@@ -237,6 +242,7 @@ class RepoPublishingRoles(ComponentResource):
         return Output.all(self._code_artifact.domain.name, ca_repo.name).apply(
             lambda args: get_policy_document(
                 statements=[
+                    CODE_ARTIFACT_SERVICE_BEARER_STATEMENT,
                     GetPolicyDocumentStatementArgs(
                         sid="PublishToCodeArtifact",
                         effect="Allow",

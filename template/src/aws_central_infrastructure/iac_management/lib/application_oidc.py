@@ -1,6 +1,4 @@
 from ephemeral_pulumi_deploy import get_aws_account_id
-from pulumi_aws.iam import GetPolicyDocumentStatementArgs
-from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import get_policy_document
 from pulumi_aws_native import iam
 
@@ -9,6 +7,7 @@ from .constants import CENTRAL_INFRA_GITHUB_ORG_NAME
 from .constants import CENTRAL_INFRA_REPO_NAME
 from .constants import CLOUD_COURIER_INFRA_REPO_NAME
 from .constants import CONFIGURE_CLOUD_COURIER
+from .github_oidc_lib import CODE_ARTIFACT_SERVICE_BEARER_STATEMENT
 from .github_oidc_lib import GithubOidcConfig
 from .github_oidc_lib import WorkloadName
 from .github_oidc_lib import create_oidc_for_single_account_workload
@@ -55,19 +54,8 @@ def generate_all_oidc(
             role_policy=iam.RolePolicyArgs(
                 policy_name="ReadFromCodeArtifact",
                 policy_document=get_policy_document(
-                    statements=[
-                        GetPolicyDocumentStatementArgs(  # TODO: DRY this up with the policy for the SSO Permission Set
-                            effect="Allow",
-                            resources=["*"],
-                            actions=["sts:GetServiceBearerToken"],
-                            conditions=[
-                                GetPolicyDocumentStatementConditionArgs(
-                                    variable="sts:AWSServiceName",
-                                    test="StringEquals",
-                                    values=["codeartifact.amazonaws.com"],
-                                )
-                            ],
-                        ),
+                    statements=[  # TODO: DRY this up with the policy for the SSO Permission Set
+                        CODE_ARTIFACT_SERVICE_BEARER_STATEMENT
                     ]
                 ).json,
             ),

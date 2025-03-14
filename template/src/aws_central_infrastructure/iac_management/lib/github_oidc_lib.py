@@ -24,6 +24,19 @@ type WorkloadName = str
 type AwsAccountId = str
 
 GITHUB_OIDC_URL = "https://token.actions.githubusercontent.com"
+CODE_ARTIFACT_SERVICE_BEARER_STATEMENT = GetPolicyDocumentStatementArgs(
+    sid="GetCodeArtifactAuthToken",
+    effect="Allow",
+    resources=["*"],
+    actions=["sts:GetServiceBearerToken"],
+    conditions=[
+        GetPolicyDocumentStatementConditionArgs(
+            variable="sts:AWSServiceName",
+            test="StringEquals",
+            values=["codeartifact.amazonaws.com"],
+        )
+    ],
+)
 
 
 class CommonOidcConfigKwargs(TypedDict):
