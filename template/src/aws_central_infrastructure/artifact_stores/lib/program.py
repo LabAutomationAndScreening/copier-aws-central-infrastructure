@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def pulumi_program() -> None:
     """Execute creating the stack."""
     # Create Resources Here
-    _ = CentralCodeArtifact()
+    central_code_artifact = CentralCodeArtifact()
     manual_artifacts_bucket = ManualArtifactsBucket()
     distributor_packages_bucket = DistributorPackagesBucket()
     create_ssm_bucket_ssm_params(
@@ -26,3 +26,4 @@ def pulumi_program() -> None:
     )  # TODO: reference this by the Identity Center stack
     package_claims: list[RepoPackageClaims] = []
     create_internal_packages_configs(package_claims)
+    central_code_artifact.register_package_claims(package_claims)
