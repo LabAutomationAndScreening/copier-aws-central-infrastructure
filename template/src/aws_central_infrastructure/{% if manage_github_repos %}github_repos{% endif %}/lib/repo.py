@@ -23,6 +23,25 @@ from pulumi_github import RepositoryRulesetRulesRequiredStatusChecksRequiredChec
 from pydantic import BaseModel
 
 
+def create_github_provider() -> Provider:
+    token = "fake"  # noqa: S105 # this is not a real secret
+    if not is_dry_run():  # the Pulumi Preview process doesn't seem to actually invoke the Github API, so only grant the Deploy role the ability to get this secret and ignore it during Preview
+        # Trying to use pulumi_aws GetSecretVersionResult isn't working because it still returns an Output, and Provider requires a string. Even attempting to use apply
+        secrets_client = boto3.client("secretsmanager")
+        secrets_response = secrets_client.list_secrets(
+            Filters=[{"Key": "name", "Values": ["/manually-entered-secrets/iac/github-access-token"]}]
+        )
+        secrets = secrets_response["SecretList"]
+        assert len(secrets) == 1, f"expected only 1 matching secret, but found {len(secrets)}"
+        assert "ARN" in secrets[0], f"expected 'ARN' in secrets[0], but found {secrets[0].keys()}"
+        secret_id = secrets[0]["ARN"]
+        token = secrets_client.get_secret_value(SecretId=secret_id)["SecretString"]
+
+    return Provider(  # TODO: figure out why this isn't getting automatically picked up from the config
+        "default", token=token, owner=get_config_str("github:owner")
+    )
+
+
 class GithubRepoConfig(BaseModel, frozen=True):
     name: str
     visibility: Literal["private", "public"] = "private"
@@ -115,22 +134,6 @@ def create_repos(configs: Iterable[GithubRepoConfig] | None = None) -> None:
         configs = []
     if not configs:
         return
-    token = "fake"  # noqa: S105 # this is not a real secret
-    if not is_dry_run():  # the Pulumi Preview process doesn't seem to actually invoke the Github API, so only grant the Deploy role the ability to get this secret and ignore it during Preview
-        # Trying to use pulumi_aws GetSecretVersionResult isn't working because it still returns an Output, and Provider requires a string. Even attempting to use apply
-        secrets_client = boto3.client("secretsmanager")
-        secrets_response = secrets_client.list_secrets(
-            Filters=[{"Key": "name", "Values": ["/manually-entered-secrets/iac/github-access-token"]}]
-        )
-        secrets = secrets_response["SecretList"]
-        assert len(secrets) == 1, f"expected only 1 matching secret, but found {len(secrets)}"
-        assert "ARN" in secrets[0], f"expected 'ARN' in secrets[0], but found {secrets[0].keys()}"
-        secret_id = secrets[0]["ARN"]
-        token = secrets_client.get_secret_value(SecretId=secret_id)["SecretString"]
-
-    provider = Provider(  # TODO: figure out why this isn't getting automatically picked up from the config
-        "default", token=token, owner=get_config_str("github:owner")
-    )
 
     for config in configs:
-        _ = GithubRepo(config=config, provider=provider)
+        _ = GithubRepo(config=config, provider=create_github_provider())
