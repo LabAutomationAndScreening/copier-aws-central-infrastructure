@@ -198,28 +198,32 @@ class RepoPublishingRoles(ComponentResource):
         self._package_claims = package_claims
         self._code_artifact = code_artifact
 
-        publish_to_staging_config = GithubOidcConfig(
-            aws_account_id=get_aws_account_id(),
-            repo_org=package_claims.repo_org,
-            repo_name=package_claims.repo_name,
-            role_name=f"GHA-CA-Staging-{package_claims.repo_name}",
-            role_policy=iam.RolePolicyArgs(
-                policy_name="PublishPackagesToCodeArtifact",
-                policy_document=self._create_role_policy_document().json,
-            ),
+        self._create_role(
+            oidc_config=GithubOidcConfig(
+                aws_account_id=get_aws_account_id(),
+                repo_org=package_claims.repo_org,
+                repo_name=package_claims.repo_name,
+                role_name=f"GHA-CA-Staging-{package_claims.repo_name}",
+                role_policy=iam.RolePolicyArgs(
+                    policy_name="PublishPackagesToCodeArtifact",
+                    policy_document=self._create_role_policy_document().json,
+                ),
+            )
         )
-        self._create_role(oidc_config=publish_to_staging_config)
-        publish_to_primary_config = GithubOidcConfig(
-            aws_account_id=get_aws_account_id(),
-            repo_org=package_claims.repo_org,
-            repo_name=package_claims.repo_name,
-            role_name=f"GHA-CA-Primary-{package_claims.repo_name}",
-            role_policy=iam.RolePolicyArgs(
-                policy_name="PublishPackagesToCodeArtifact",
-                policy_document=self._create_role_policy_document(for_primary=True).json,
-            ),
+
+        self._create_role(
+            oidc_config=GithubOidcConfig(
+                aws_account_id=get_aws_account_id(),
+                repo_org=package_claims.repo_org,
+                repo_name=package_claims.repo_name,
+                restrictions="refs/heads/main",  # TODO: consider creating a publishing environment within GitHub and using that
+                role_name=f"GHA-CA-Primary-{package_claims.repo_name}",
+                role_policy=iam.RolePolicyArgs(
+                    policy_name="PublishPackagesToCodeArtifact",
+                    policy_document=self._create_role_policy_document(for_primary=True).json,
+                ),
+            )
         )
-        self._create_role(oidc_config=publish_to_primary_config)
 
     def _create_role(
         self,
