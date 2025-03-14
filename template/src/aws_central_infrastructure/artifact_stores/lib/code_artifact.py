@@ -11,6 +11,8 @@ from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
 from pulumi_aws.iam import get_policy_document
 from pulumi_aws.organizations import get_organization
 from pulumi_aws_native import codeartifact
+from pydantic import BaseModel
+from pydantic import Field
 
 from aws_central_infrastructure.iac_management.lib.constants import CENTRAL_INFRA_GITHUB_ORG_NAME
 
@@ -19,6 +21,14 @@ logger = logging.getLogger(__name__)
 CODE_ARTIFACT_DOMAIN_NAME = CENTRAL_INFRA_GITHUB_ORG_NAME
 PRIMARY_REPO_NAME = f"{CENTRAL_INFRA_GITHUB_ORG_NAME}-primary"
 STAGING_REPO_NAME = f"{CENTRAL_INFRA_GITHUB_ORG_NAME}-staging"
+
+
+class RepoPackageClaims(BaseModel):
+    repo_name: str
+    repo_org: str = CENTRAL_INFRA_GITHUB_ORG_NAME
+    pypi_package_names: set[str] = Field(default_factory=set)
+    npm_package_names: set[str] = Field(default_factory=set)
+    nuget_package_names: set[str] = Field(default_factory=set)
 
 
 class CentralCodeArtifact(ComponentResource):

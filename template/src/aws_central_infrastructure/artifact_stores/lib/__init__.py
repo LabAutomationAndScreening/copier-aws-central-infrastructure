@@ -1,1 +1,1 @@
-from .program import pulumi_program
+from .code_artifact import RepoPackageClaims

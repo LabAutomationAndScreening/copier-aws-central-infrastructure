@@ -2,7 +2,9 @@ import logging
 
 from pulumi import export
 
+from ..internal_packages import create_internal_packages_configs
 from .code_artifact import CentralCodeArtifact
+from .code_artifact import RepoPackageClaims
 from .ssm_buckets import DistributorPackagesBucket
 from .ssm_buckets import ManualArtifactsBucket
 from .ssm_buckets import create_ssm_bucket_ssm_params
@@ -21,4 +23,6 @@ def pulumi_program() -> None:
     )
     export(
         "manual-artifacts-bucket-name", manual_artifacts_bucket.bucket.bucket_name
-    )  # referenced by the Identity Center stack
+    )  # TODO: reference this by the Identity Center stack
+    package_claims: list[RepoPackageClaims] = []
+    create_internal_packages_configs(package_claims)
