@@ -6,7 +6,6 @@ from ephemeral_pulumi_deploy.utils import get_aws_account_id
 from pulumi import ComponentResource
 from pulumi import Output
 from pulumi import ResourceOptions
-from pulumi.runtime import is_dry_run
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
@@ -22,6 +21,8 @@ from .shared_lib import AwsLogicalWorkload
 
 type WorkloadName = str
 type AwsAccountId = str
+
+GITHUB_OIDC_URL = "https://token.actions.githubusercontent.com"
 
 
 class CommonOidcConfigKwargs(TypedDict):
@@ -218,6 +219,10 @@ class WorkloadGithubOidc(ComponentResource):
             if oidc_config.aws_account_id not in all_aws_accounts:
                 all_aws_accounts.append(oidc_config.aws_account_id)
         oidc_provider_arns: dict[AwsAccountId, Output[str]] = {}
+        central_infra_oidc_provider_arn = Output.from_input(  # There can only be one GitHub OIDC provider per AWS account, and the aws-organization repo creates it in the central infra account. So need to dynamically get the ARN here.
+            get_open_id_connect_provider(url=GITHUB_OIDC_URL).arn
+        )
+        oidc_provider_arns[central_infra_aws_account_id] = central_infra_oidc_provider_arn
         for aws_account_id in all_aws_accounts:
             account_name = find_account_name_from_workload_info(workload_info=workload_info, account_id=aws_account_id)
             pulumi_provider = None if aws_account_id == central_infra_aws_account_id else providers[aws_account_id]
@@ -225,21 +230,13 @@ class WorkloadGithubOidc(ComponentResource):
             if aws_account_id != central_infra_aws_account_id:
                 oidc_provider_arns[aws_account_id] = iam.OidcProvider(
                     f"github-oidc-provider-{account_name}",
-                    url="https://token.actions.githubusercontent.com",
+                    url=GITHUB_OIDC_URL,
                     client_id_list=["sts.amazonaws.com"],
                     thumbprint_list=["6938fd4d98bab03faadb97b34396831e3780aea1"],  # GitHub's root CA thumbprint
                     tags=common_tags_native(),
                     opts=ResourceOptions(provider=pulumi_provider, parent=self),
                 ).arn
-            else:
-                central_infra_oidc_provider_arn = Output.from_input(
-                    "not-used-during-preview"
-                )  # TODO: consider granting the Preview role the ability to get this ARN
-                if not is_dry_run():
-                    central_infra_oidc_provider_arn = Output.from_input(
-                        get_open_id_connect_provider(url="https://token.actions.githubusercontent.com").arn
-                    )
-                oidc_provider_arns[central_infra_aws_account_id] = central_infra_oidc_provider_arn
+
         for oidc_config in oidc_configs:
             assume_role_policy_doc = Output.all(
                 oidc_config=Output.from_input(oidc_config),
