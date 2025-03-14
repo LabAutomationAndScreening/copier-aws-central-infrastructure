@@ -6,6 +6,7 @@ from ephemeral_pulumi_deploy.utils import get_aws_account_id
 from pulumi import ComponentResource
 from pulumi import Output
 from pulumi import ResourceOptions
+from pulumi_aws.iam import AwaitableGetPolicyDocumentResult
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
@@ -23,6 +24,19 @@ type WorkloadName = str
 type AwsAccountId = str
 
 GITHUB_OIDC_URL = "https://token.actions.githubusercontent.com"
+CODE_ARTIFACT_SERVICE_BEARER_STATEMENT = GetPolicyDocumentStatementArgs(
+    sid="GetCodeArtifactAuthToken",
+    effect="Allow",
+    resources=["*"],
+    actions=["sts:GetServiceBearerToken"],
+    conditions=[
+        GetPolicyDocumentStatementConditionArgs(
+            variable="sts:AWSServiceName",
+            test="StringEquals",
+            values=["codeartifact.amazonaws.com"],
+        )
+    ],
+)
 
 
 class CommonOidcConfigKwargs(TypedDict):
@@ -41,8 +55,37 @@ class GithubOidcConfig(BaseModel):
     managed_policy_arns: list[str] = Field(default_factory=list)
     restrictions: str | None = None
     role_policy: iam.RolePolicyArgs | None = None
+    role_resource_name_prefix: str = "github-oidc--"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+def create_oidc_assume_role_policy(
+    *, oidc_config: GithubOidcConfig, provider_arn: str
+) -> AwaitableGetPolicyDocumentResult:
+    return get_policy_document(
+        statements=[
+            GetPolicyDocumentStatementArgs(
+                effect="Allow",
+                principals=[GetPolicyDocumentStatementPrincipalArgs(type="Federated", identifiers=[provider_arn])],
+                actions=["sts:AssumeRoleWithWebIdentity"],
+                conditions=[
+                    GetPolicyDocumentStatementConditionArgs(
+                        test="StringLike" if oidc_config.restrictions is None else "StringEquals",
+                        variable="token.actions.githubusercontent.com:sub",
+                        values=[
+                            f"repo:{oidc_config.repo_org}/{oidc_config.repo_name}:{'*' if oidc_config.restrictions is None else oidc_config.restrictions}"
+                        ],
+                    ),
+                    GetPolicyDocumentStatementConditionArgs(
+                        test="StringEquals",
+                        variable="token.actions.githubusercontent.com:aud",
+                        values=["sts.amazonaws.com"],
+                    ),
+                ],
+            )
+        ]
+    )
 
 
 def create_kms_policy() -> iam.RolePolicyArgs:
@@ -242,32 +285,8 @@ class WorkloadGithubOidc(ComponentResource):
                 oidc_config=Output.from_input(oidc_config),
                 oidc_provider_arn=oidc_provider_arns[oidc_config.aws_account_id],
             ).apply(
-                lambda args: get_policy_document(
-                    statements=[
-                        GetPolicyDocumentStatementArgs(
-                            effect="Allow",
-                            principals=[
-                                GetPolicyDocumentStatementPrincipalArgs(
-                                    type="Federated", identifiers=[args["oidc_provider_arn"]]
-                                )
-                            ],
-                            actions=["sts:AssumeRoleWithWebIdentity"],
-                            conditions=[
-                                GetPolicyDocumentStatementConditionArgs(
-                                    test="StringLike" if args["oidc_config"].restrictions is None else "StringEquals",
-                                    variable="token.actions.githubusercontent.com:sub",
-                                    values=[
-                                        f"repo:{args['oidc_config'].repo_org}/{args['oidc_config'].repo_name}:{'*' if args['oidc_config'].restrictions is None else args['oidc_config'].restrictions}"
-                                    ],
-                                ),
-                                GetPolicyDocumentStatementConditionArgs(
-                                    test="StringEquals",
-                                    variable="token.actions.githubusercontent.com:aud",
-                                    values=["sts.amazonaws.com"],
-                                ),
-                            ],
-                        )
-                    ]
+                lambda args: create_oidc_assume_role_policy(
+                    oidc_config=args["oidc_config"], provider_arn=args["oidc_provider_arn"]
                 )
             )
 
