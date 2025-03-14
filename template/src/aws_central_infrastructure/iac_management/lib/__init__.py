@@ -1,4 +1,3 @@
-from .application_oidc import create_application_oidc_if_needed
 from .github_oidc_lib import AwsAccountId
 from .github_oidc_lib import GithubOidcConfig
 from .github_oidc_lib import WorkloadName

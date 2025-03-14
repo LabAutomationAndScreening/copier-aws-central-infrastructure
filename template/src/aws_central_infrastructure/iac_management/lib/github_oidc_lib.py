@@ -2,12 +2,14 @@ from typing import TypedDict
 
 from ephemeral_pulumi_deploy import get_config_str
 from ephemeral_pulumi_deploy.utils import common_tags_native
+from ephemeral_pulumi_deploy.utils import get_aws_account_id
 from pulumi import ComponentResource
 from pulumi import Output
 from pulumi import ResourceOptions
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
+from pulumi_aws.iam import get_open_id_connect_provider
 from pulumi_aws.iam import get_policy_document
 from pulumi_aws_native import Provider
 from pulumi_aws_native import iam
@@ -19,6 +21,8 @@ from .shared_lib import AwsLogicalWorkload
 
 type WorkloadName = str
 type AwsAccountId = str
+
+GITHUB_OIDC_URL = "https://token.actions.githubusercontent.com"
 
 
 class CommonOidcConfigKwargs(TypedDict):
@@ -207,27 +211,36 @@ class WorkloadGithubOidc(ComponentResource):
         providers: dict[AwsAccountId, Provider],
     ):
         super().__init__("labauto:AwsWorkloadGithubOidc", workload_info.name, None)
+        central_infra_aws_account_id = get_aws_account_id()
         all_aws_accounts: list[
             str
         ] = []  # use a list instead of a set for deterministic ordering to avoid false positive pulumi diffs. # TODO: consider just creating a sorted list after using a set initially
         for oidc_config in oidc_configs:
             if oidc_config.aws_account_id not in all_aws_accounts:
                 all_aws_accounts.append(oidc_config.aws_account_id)
-        oidc_providers: dict[AwsAccountId, iam.OidcProvider] = {}
+        oidc_provider_arns: dict[AwsAccountId, Output[str]] = {}
+        central_infra_oidc_provider_arn = Output.from_input(  # There can only be one GitHub OIDC provider per AWS account, and the aws-organization repo creates it in the central infra account. So need to dynamically get the ARN here.
+            get_open_id_connect_provider(url=GITHUB_OIDC_URL).arn
+        )
+        oidc_provider_arns[central_infra_aws_account_id] = central_infra_oidc_provider_arn
         for aws_account_id in all_aws_accounts:
             account_name = find_account_name_from_workload_info(workload_info=workload_info, account_id=aws_account_id)
-            oidc_providers[aws_account_id] = iam.OidcProvider(
-                f"github-oidc-provider-{account_name}",
-                url="https://token.actions.githubusercontent.com",
-                client_id_list=["sts.amazonaws.com"],
-                thumbprint_list=["6938fd4d98bab03faadb97b34396831e3780aea1"],  # GitHub's root CA thumbprint
-                tags=common_tags_native(),
-                opts=ResourceOptions(provider=providers[aws_account_id], parent=self),
-            )
+            pulumi_provider = None if aws_account_id == central_infra_aws_account_id else providers[aws_account_id]
+
+            if aws_account_id != central_infra_aws_account_id:
+                oidc_provider_arns[aws_account_id] = iam.OidcProvider(
+                    f"github-oidc-provider-{account_name}",
+                    url=GITHUB_OIDC_URL,
+                    client_id_list=["sts.amazonaws.com"],
+                    thumbprint_list=["6938fd4d98bab03faadb97b34396831e3780aea1"],  # GitHub's root CA thumbprint
+                    tags=common_tags_native(),
+                    opts=ResourceOptions(provider=pulumi_provider, parent=self),
+                ).arn
+
         for oidc_config in oidc_configs:
             assume_role_policy_doc = Output.all(
                 oidc_config=Output.from_input(oidc_config),
-                oidc_provider_arn=oidc_providers[oidc_config.aws_account_id].arn,
+                oidc_provider_arn=oidc_provider_arns[oidc_config.aws_account_id],
             ).apply(
                 lambda args: get_policy_document(
                     statements=[
@@ -257,8 +270,14 @@ class WorkloadGithubOidc(ComponentResource):
                     ]
                 )
             )
+
             account_name = find_account_name_from_workload_info(
                 workload_info=workload_info, account_id=oidc_config.aws_account_id
+            )
+            pulumi_provider = (
+                None
+                if oidc_config.aws_account_id == central_infra_aws_account_id
+                else providers[oidc_config.aws_account_id]
             )
             _ = iam.Role(
                 f"github-oidc--{account_name}--{oidc_config.role_name}",
@@ -267,7 +286,7 @@ class WorkloadGithubOidc(ComponentResource):
                 managed_policy_arns=oidc_config.managed_policy_arns,
                 policies=None if oidc_config.role_policy is None else [oidc_config.role_policy],
                 tags=common_tags_native(),
-                opts=ResourceOptions(provider=providers[oidc_config.aws_account_id], parent=self),
+                opts=ResourceOptions(provider=pulumi_provider, parent=self),
             )
 
 
