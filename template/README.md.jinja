@@ -14,6 +14,9 @@ To create a new repository using this template:
 4. Commit the changes
 5. Rebuild your new devcontainer
 
+{% endraw %}{% if manage_github_repos %}{% raw %}## Managing your organization's GitHub repositories
+The file `src/aws_central_infrastructure/github_repos/repos.py` contains a list of repositories that are managed by this project. To add a new repository, add a new entry to the `configs` list.{% endraw %}{% endif %}{% raw %}
+
 
 
 # Development
