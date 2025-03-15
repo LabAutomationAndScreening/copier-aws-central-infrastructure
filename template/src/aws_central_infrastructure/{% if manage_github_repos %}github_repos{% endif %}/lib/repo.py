@@ -118,7 +118,7 @@ class GithubRepo(ComponentResource):
         )
 
 
-def create_repos(configs: Iterable[GithubRepoConfig] | None = None) -> None:
+def create_repos(*, configs: Iterable[GithubRepoConfig] | None = None, provider: Provider) -> None:
     # Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write
     # After the initial deployment which creates the secret, go in and use the Manual Secrets permission set to update the secret with the real token, then you can create repos
     _ = secretsmanager.Secret(
@@ -136,4 +136,4 @@ def create_repos(configs: Iterable[GithubRepoConfig] | None = None) -> None:
         return
 
     for config in configs:
-        _ = GithubRepo(config=config, provider=create_github_provider())
+        _ = GithubRepo(config=config, provider=provider)
