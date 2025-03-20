@@ -6,15 +6,8 @@
 [![Open in Dev Containers](https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://www.github.com/{% endraw %}{{ repo_org_name }}/{{ repo_name }}{% raw %})
 
 
-# Usage
-To create a new repository using this template:
-1. Install `copier` and `copier-templates-extensions`. An easy way to do that is to copy the `.devcontainer/install-ci-tooling.sh` script in this repository into your new repo and then run it.
-2. Run copier to instantiate the template: `copier copy --trust gh:LabAutomationAndScreening/copier-aws-central-infrastructure.git`
-3. Run `uv lock` to generate the lock file
-4. Commit the changes
-5. Rebuild your new devcontainer
-
-{% endraw %}{% if manage_github_repos %}{% raw %}## Managing your organization's GitHub repositories
+# Usage{% endraw %}{% if manage_github_repos %}{% raw %}
+## Managing your organization's GitHub repositories
 The file `src/aws_central_infrastructure/github_repos/repos.py` contains a list of repositories that are managed by this project. To add a new repository, add a new entry to the `configs` list.{% endraw %}{% endif %}{% raw %}
 
 ## Allowing a git repository to publish a packgae to AWS CodeArtifact
@@ -25,10 +18,25 @@ At the moment, only Python packages are supported. See https://github.com/LabAut
 # Development
 
 ## Using Pulumi
-Run a Pulumi Preview for the IaC Management project: `uv run python -m aws_central_infrastructure.deploy_iac_management --stack=prod`
-Run a Pulumi Preview for the Artifact Stores project: `uv run python -m aws_central_infrastructure.deploy_artifact_stores --stack=prod`
-Run a Pulumi Preview for the Identity Center project: `uv run python -m aws_central_infrastructure.deploy_identity_center --stack=prod`{% endraw %}{% if manage_github_repos %}{% raw%}
-Run a Pulumi Preview for the GitHub Repositories project: `uv run python -m aws_central_infrastructure.deploy_github_repos --stack=prod`{% endraw %}{% endif %}{% raw %}
+Run a Pulumi Preview for the IaC Management project:
+```bash
+uv run python -m aws_central_infrastructure.deploy_iac_management --stack=prod
+```
+
+Run a Pulumi Preview for the Artifact Stores project:
+```bash
+uv run python -m aws_central_infrastructure.deploy_artifact_stores --stack=prod
+```
+
+Run a Pulumi Preview for the Identity Center project:
+```bash
+uv run python -m aws_central_infrastructure.deploy_identity_center --stack=prod
+```{% endraw %}{% if manage_github_repos %}{% raw %}
+
+Run a Pulumi Preview for the GitHub Repositories project:
+```bash
+uv run python -m aws_central_infrastructure.deploy_github_repos --stack=prod
+```{% endraw %}{% endif %}{% raw %}
 
 
 ## Updating from the template
