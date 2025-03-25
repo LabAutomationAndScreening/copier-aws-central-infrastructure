@@ -124,7 +124,7 @@ jobs:
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ lint, iac-management-pulumi, artifact-stores-pulumi{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}, identity-center-pulumi{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %}, github-repos-pulumi{% endraw %}{% endif %}{% raw %} ]
+    needs: [ lint, iac-management-pulumi, artifact-stores-pulumi, central-networking-pulumi{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}, identity-center-pulumi{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %}, github-repos-pulumi{% endraw %}{% endif %}{% raw %} ]
     if: always()
     steps:
       - name: fail if prior job failure
