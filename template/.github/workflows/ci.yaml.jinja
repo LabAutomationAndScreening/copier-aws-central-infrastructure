@@ -77,9 +77,24 @@ jobs:
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
       AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"{% endraw %}{% endif %}{% raw %}
 
-  artifact-stores-pulumi:
+  central-networking-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
     needs: [ iac-management-pulumi ]
+    with:
+      AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
+      PULUMI_STACK_NAME: prod
+      PYTHON_VERSION: {% endraw %}{{ python_version }}{% raw %}
+      DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure
+      DEPLOY_SCRIPT_NAME: deploy_central_networking
+      PULUMI_PREVIEW: true
+      PREVIEW_ROLE_NAME: InfraPreview--{% endraw %}{{ repo_name }}{% raw %}
+      PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
+      PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
+      AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
+
+  artifact-stores-pulumi:
+    uses: ./.github/workflows/pulumi-aws.yml
+    needs: [ iac-management-pulumi, central-networking-pulumi ] # spinning up AMI builders depends on central-networking
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
@@ -91,6 +106,7 @@ jobs:
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
       AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
+
 
 {% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}  identity-center-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
@@ -109,10 +125,10 @@ jobs:
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ lint, iac-management-pulumi, artifact-stores-pulumi{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}, identity-center-pulumi{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %}, github-repos-pulumi{% endraw %}{% endif %}{% raw %} ]
+    needs: [ lint, iac-management-pulumi, artifact-stores-pulumi, central-networking-pulumi{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}, identity-center-pulumi{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %}, github-repos-pulumi{% endraw %}{% endif %}{% raw %} ]
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.lint.result != 'success' || needs.iac-management-pulumi.result != 'success' || needs.artifact-stores-pulumi.result != 'success'{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %} || needs.identity-center-pulumi.result != 'success'{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %} || needs.github-repos-pulumi.result != 'success'{% endraw %}{% endif %}{% raw %}
+        if: needs.lint.result != 'success' || needs.iac-management-pulumi.result != 'success' || needs.artifact-stores-pulumi.result != 'success' || needs.central-networking-pulumi.result != 'success'{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %} || needs.identity-center-pulumi.result != 'success'{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %} || needs.github-repos-pulumi.result != 'success'{% endraw %}{% endif %}{% raw %}
         run: |
           exit 1{% endraw %}

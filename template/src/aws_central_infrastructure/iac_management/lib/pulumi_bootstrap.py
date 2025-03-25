@@ -1,9 +1,12 @@
 import logging
 
+import pulumi_aws
 from ephemeral_pulumi_deploy import get_config_str
 from ephemeral_pulumi_deploy.utils import common_tags
 from pulumi import ComponentResource
+from pulumi import Resource
 from pulumi import ResourceOptions
+from pulumi.runtime import is_dry_run
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
@@ -22,20 +25,45 @@ from .shared_lib import AwsLogicalWorkload
 logger = logging.getLogger(__name__)
 
 
-def create_providers(*, aws_accounts: list[AwsAccountInfo], parent: ComponentResource) -> dict[AwsAccountId, Provider]:
-    providers: dict[AwsAccountId, Provider] = {}
+def create_classic_providers(
+    *, aws_accounts: list[AwsAccountInfo], parent: Resource
+) -> dict[AwsAccountId, pulumi_aws.Provider]:
+    providers: dict[AwsAccountId, pulumi_aws.Provider] = {}
     organization_home_region = get_config_str("proj:aws_org_home_region")
+    role_type = "Preview" if is_dry_run() else "Deploy"
     for account in aws_accounts:
-        role_arn = f"arn:aws:iam::{account.id}:role/InfraDeploy--{CENTRAL_INFRA_REPO_NAME}"
-        assume_role = ProviderAssumeRoleArgs(role_arn=role_arn, session_name="pulumi")
-        provider = Provider(
-            f"central-infra-provider-for-{account.name}",
+        role_arn = f"arn:aws:iam::{account.id}:role/Infra{role_type}--{CENTRAL_INFRA_REPO_NAME}"
+        assume_role = pulumi_aws.ProviderAssumeRoleArgs(role_arn=role_arn, session_name="pulumi")
+        provider = pulumi_aws.Provider(
+            f"central-infra-classic-provider-for-{account.name}",
             assume_role=assume_role,
             allowed_account_ids=[account.id],
             region=organization_home_region,
-            opts=ResourceOptions(parent=parent),
+            opts=ResourceOptions(
+                parent=parent
+            ),  # TODO: figure out how to stop so much false positive diff showing up in Pulumi Preview. Using ignore_changes doesn't work for this provider, even though it seems to for Native Provider
         )
         providers[account.id] = provider
+
+    return providers
+
+
+def create_providers(*, aws_accounts: list[AwsAccountInfo], parent: Resource) -> dict[AwsAccountId, Provider]:
+    providers: dict[AwsAccountId, Provider] = {}
+    organization_home_region = get_config_str("proj:aws_org_home_region")
+    role_type = "Preview" if is_dry_run() else "Deploy"
+    for account in aws_accounts:
+        role_arn = f"arn:aws:iam::{account.id}:role/Infra{role_type}--{CENTRAL_INFRA_REPO_NAME}"
+        assume_role = ProviderAssumeRoleArgs(role_arn=role_arn, session_name="pulumi")
+        provider = Provider(
+            f"central-infra-native-provider-for-{account.name}",
+            assume_role=assume_role,
+            allowed_account_ids=[account.id],
+            region=organization_home_region,
+            opts=ResourceOptions(parent=parent, ignore_changes=["assume_role"]),
+        )
+        providers[account.id] = provider
+
     return providers
 
 

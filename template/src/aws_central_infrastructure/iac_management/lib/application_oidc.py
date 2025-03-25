@@ -34,16 +34,17 @@ def create_application_oidc_if_needed(
 def generate_all_oidc(
     *, workloads_info: dict[WorkloadName, AwsLogicalWorkload], all_oidc: dict[WorkloadName, list[GithubOidcConfig]]
 ) -> None:
-    workload_name = "identity-center"
-    identity_center_workload = workloads_info[workload_name]
-    all_oidc[workload_name].extend(
-        create_oidc_for_single_account_workload(
-            aws_account_id=identity_center_workload.prod_accounts[0].id,
-            repo_org=CENTRAL_INFRA_GITHUB_ORG_NAME,
-            repo_name=CENTRAL_INFRA_REPO_NAME,
-            role_name_suffix="identity-center",
+    # Organization delegate accounts that have things deployed within this repo
+    for workload_name in ("identity-center",):
+        workload = workloads_info[workload_name]
+        all_oidc[workload_name].extend(
+            create_oidc_for_single_account_workload(
+                aws_account_id=workload.prod_accounts[0].id,
+                repo_org=CENTRAL_INFRA_GITHUB_ORG_NAME,
+                repo_name=CENTRAL_INFRA_REPO_NAME,
+                role_name_suffix=workload_name,
+            )
         )
-    )
 
     all_oidc["central-infra"].append(
         GithubOidcConfig(
