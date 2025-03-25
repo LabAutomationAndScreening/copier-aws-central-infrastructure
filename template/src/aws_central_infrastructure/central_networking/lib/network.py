@@ -64,14 +64,17 @@ def create_ssm_param_in_all_accounts(  # noqa: PLR0913 # this is a lot of argume
         )
 
 
-def tag_shared_resource(
+def tag_shared_resource(  # noqa: PLR0913 # this is a lot of arguments, but they're all kwargs
     *,
     providers: dict[str, pulumi_aws.Provider],
     tags: list[TagArgs],
     resource_name: str,
     resource_id: Output[str],
     parent: Resource,
+    depends_on: list[Resource] | None = None,
 ):
+    if depends_on is None:
+        depends_on = [parent]
     for account_id, provider in providers.items():
         for tag in tags:
             _ = Tag(
@@ -79,7 +82,12 @@ def tag_shared_resource(
                 key=tag.key,
                 value=tag.value,
                 resource_id=resource_id,
-                opts=ResourceOptions(provider=provider, delete_before_replace=True, parent=parent, depends_on=[parent]),
+                opts=ResourceOptions(
+                    provider=provider,
+                    delete_before_replace=True,
+                    parent=parent,
+                    depends_on=depends_on,
+                ),
             )
 
 
@@ -109,21 +117,14 @@ class CentralNetworkingVpc(ComponentResource):
             append_resource_suffix(name),
             None,
         )
-        tag_name = f"{name}-central-vpc"
-        vpc_tags = [TagArgs(key="Name", value=tag_name), *common_tags_native()]
+        self.tag_name = f"{name}-central-vpc"
+        self.vpc_tags = [TagArgs(key="Name", value=self.tag_name), *common_tags_native()]
         self.vpc = ec2.Vpc(
             append_resource_suffix(name),
             cidr_block="10.0.0.0/16",
             enable_dns_hostnames=True,
-            tags=vpc_tags,
+            tags=self.vpc_tags,
             opts=ResourceOptions(parent=self),
-        )
-        tag_shared_resource(
-            providers=all_providers.all_classic_providers,
-            tags=vpc_tags,
-            resource_name=tag_name,
-            resource_id=self.vpc.vpc_id,
-            parent=self.vpc,
         )
         create_ssm_param_in_all_accounts(
             providers=all_providers.all_native_providers,
@@ -165,7 +166,7 @@ class SharedSubnet(ComponentResource):
             tags=subnet_tags,
             opts=ResourceOptions(parent=self),
         )
-        subnet_share = ram.ResourceShare(
+        self.subnet_share = ram.ResourceShare(
             append_resource_suffix(config.name),
             resource_arns=[
                 subnet.subnet_id.apply(
@@ -182,7 +183,7 @@ class SharedSubnet(ComponentResource):
             tags=subnet_tags,
             resource_name=f"{config.name}-subnet",
             resource_id=subnet.subnet_id,
-            parent=subnet_share,
+            parent=self.subnet_share,
         )
         route_table_tags = [TagArgs(key="Name", value=config.name), *common_tags_native()]
         route_table = ec2.RouteTable(
@@ -196,7 +197,7 @@ class SharedSubnet(ComponentResource):
             tags=route_table_tags,
             resource_name=f"{config.name}-route-table",
             resource_id=route_table.id,
-            parent=subnet_share,
+            parent=self.subnet_share,
         )
 
         _ = ec2.SubnetRouteTableAssociation(
@@ -237,7 +238,7 @@ class SharedSubnet(ComponentResource):
             )
         create_ssm_param_in_all_accounts(
             providers=all_providers.all_native_providers,
-            parent=subnet_share,
+            parent=self.subnet_share,
             resource_name_prefix=f"central-networking-subnet-id-{config.name}",
             param_value=subnet.subnet_id,
             param_name=f"{CENTRAL_NETWORKING_SSM_PREFIX}/subnets/{config.name}/id",

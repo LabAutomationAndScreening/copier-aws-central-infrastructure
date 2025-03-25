@@ -7,6 +7,7 @@ from .network import AllAccountProviders
 from .network import CentralNetworkingVpc
 from .network import SharedSubnet
 from .network import SharedSubnetConfig
+from .network import tag_shared_resource
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,16 @@ def pulumi_program() -> None:
         ),
         org_arn=org_info.arn,
         all_providers=all_providers,
+    )
+    tag_shared_resource(
+        providers=all_providers.all_classic_providers,
+        tags=generic_vpc.vpc_tags,
+        resource_name=generic_vpc.tag_name,
+        resource_id=generic_vpc.vpc.vpc_id,
+        parent=generic_vpc,
+        depends_on=[
+            generic_public.subnet_share
+        ],  # the VPC itself isn't actually shared with the other accounts directly, it's only shared via the subnet, so need to wait for that RAM share to be created
     )
     if CREATE_PRIVATE_SUBNET:
         _ = SharedSubnet(
