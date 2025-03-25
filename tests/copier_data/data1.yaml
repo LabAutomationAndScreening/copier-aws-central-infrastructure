@@ -20,3 +20,4 @@ initial_iac_management_deploy_occurred: false
 identity_center_production_account_id: 023202320444
 configure_cloud_courier: false
 manage_github_repos: false
+add_nat_to_central_networking: true

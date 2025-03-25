@@ -119,6 +119,11 @@ manage_github_repos:
     help: Do you want to use this repository to manage some of the other GitHub repositories through Infrastructure as Code?
     default: no
 
+add_nat_to_central_networking:
+    type:
+    help: Do you want to add a NAT Gateway to the central networking VCP (this will incur costs...around $30/month)?
+    default: no
+
 configure_cloud_courier:
     type: bool
     help: Should Identity Center permissions be automatically configured to facilitate using Cloud Courier?
