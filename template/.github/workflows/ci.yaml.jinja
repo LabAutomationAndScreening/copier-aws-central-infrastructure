@@ -94,7 +94,7 @@ jobs:
 
   artifact-stores-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
-    needs: [ iac-management-pulumi, central-networking-pulumi ]
+    needs: [ iac-management-pulumi, central-networking-pulumi ] # spinning up AMI builders depends on central-networking
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
