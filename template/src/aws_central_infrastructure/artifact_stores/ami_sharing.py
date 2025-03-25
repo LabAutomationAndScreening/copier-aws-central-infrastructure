@@ -2,7 +2,7 @@ from .lib import ImageBuilderConfig
 from .lib import ImageShareConfig
 
 
-def create_image_builders(image_builders: list[ImageBuilderConfig]) -> None:
+def define_image_builders(image_builders: list[ImageBuilderConfig]) -> None:
     """Create image builders used to build AMIs to share across the organization.
 
     Example:
@@ -14,7 +14,7 @@ def create_image_builders(image_builders: list[ImageBuilderConfig]) -> None:
     """
 
 
-def create_image_shares(image_shares: list[ImageShareConfig]) -> None:
+def define_image_shares(image_shares: list[ImageShareConfig]) -> None:
     """Define the sharing of AMIs across the organization.
 
     Example:

@@ -7,6 +7,7 @@ from pulumi import ResourceOptions
 from pulumi_aws import identitystore as identitystore_classic
 from pulumi_aws import ssoadmin
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
+from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import get_policy_document
 from pydantic import BaseModel
 from pydantic import Field
@@ -164,6 +165,119 @@ VIEW_ONLY_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
         # TODO: "CloudWatchEventsReadOnlyAccess",  # see information about event rules and patterns
     ],
     inline_policy_callable=create_read_state_inline_policy,
+)
+
+EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aws.amazon.com/blogs/security/how-to-enable-secure-seamless-single-sign-on-to-amazon-ec2-windows-instances-with-aws-sso/
+    name="SsoIntoEc2",
+    description="The ability to SSO Login into EC2 instances via Systems Manager",
+    inline_policy_callable=lambda: get_policy_document(
+        statements=[
+            GetPolicyDocumentStatementArgs(
+                sid="SSO",
+                effect="Allow",
+                actions=["sso:ListDirectoryAssociations*", "identitystore:DescribeUser"],
+                resources=["*"],
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="EC2",
+                effect="Allow",
+                actions=[
+                    "ec2:Describe*",
+                    "ec2:GetPasswordData",
+                    "cloudwatch:DescribeAlarms",  # view alarms in EC2 Instances console
+                    "cloudwatch:GetMetricData",  # view metrics in EC2 Instances console
+                    "compute-optimizer:GetEnrollmentStatus",  # view recommendations in EC2 Instances console
+                ],
+                resources=["*"],
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="EC2StartStop",
+                effect="Allow",
+                actions=["ec2:StartInstances", "ec2:StopInstances", "ec2:RebootInstances"],
+                resources=["arn:aws:ec2:*:*:instance/*"],
+                # TODO: figure out how to lock this down to the intended instances...in theory a condition using ec2:ResourceTag/UserAccess and a value of sts:RoleSessionName is supposed to work, but it didn't seem to
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="SSM",
+                effect="Allow",
+                actions=["ssm:DescribeInstanceProperties", "ssm:GetCommandInvocation", "ssm:GetInventorySchema"],
+                resources=["*"],
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="TerminateSession",
+                effect="Allow",
+                actions=["ssm:TerminateSession"],
+                resources=["*"],
+                conditions=[
+                    GetPolicyDocumentStatementConditionArgs(
+                        test="StringLike",
+                        variable="ssm:resourceTag/aws:ssmmessages:session-id",
+                        values=["${aws:userName}"],
+                    ),
+                ],
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="SSMGetDocument",
+                effect="Allow",
+                actions=["ssm:GetDocument"],
+                resources=[
+                    "arn:aws:ssm:*:*:document/AWS-StartPortForwardingSession",
+                    "arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell",
+                ],
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="SSMStartSession",
+                effect="Allow",
+                actions=["ssm:StartSession"],
+                resources=[
+                    "arn:aws:ec2:*:*:instance/*",
+                    "arn:aws:ssm:*:*:managed-instance/*",
+                    "arn:aws:ssm:*:*:document/AWS-StartPortForwardingSession",
+                ],
+                conditions=[
+                    GetPolicyDocumentStatementConditionArgs(
+                        test="BoolIfExists",
+                        variable="ssm:SessionDocumentAccessCheck",
+                        values=["true"],
+                    ),
+                ],
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="SSMSendCommand",
+                effect="Allow",
+                actions=["ssm:SendCommand"],
+                resources=[
+                    "arn:aws:ec2:*:*:instance/*",
+                    "arn:aws:ssm:*:*:managed-instance/*",
+                    "arn:aws:ssm:*:*:document/AWSSSO-CreateSSOUser",
+                ],
+                conditions=[
+                    GetPolicyDocumentStatementConditionArgs(
+                        test="BoolIfExists",
+                        variable="ssm:SessionDocumentAccessCheck",
+                        values=["true"],
+                    ),
+                ],
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="GuiConnect",
+                effect="Allow",
+                actions=[
+                    "ssm-guiconnect:CancelConnection",
+                    "ssm-guiconnect:GetConnection",
+                    "ssm-guiconnect:StartConnection",
+                ],
+                resources=["*"],
+            ),
+        ]
+    ).json,
+)
+
+ALL_PERM_SET_CONTAINERS = (
+    MANUAL_SECRETS_ENTRY_PERM_SET_CONTAINER,
+    LOW_RISK_ADMIN_PERM_SET_CONTAINER,
+    VIEW_ONLY_PERM_SET_CONTAINER,
+    EC2_SSO_PER_SET_CONTAINER,
 )
 
 
