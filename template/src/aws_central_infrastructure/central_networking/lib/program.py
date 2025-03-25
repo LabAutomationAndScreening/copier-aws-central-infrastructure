@@ -38,7 +38,7 @@ def pulumi_program() -> None:
         resource_name=generic_vpc.tag_name,
         resource_id=generic_vpc.vpc.vpc_id,
         parent=generic_vpc,
-        additional_depends_on=[
+        depends_on=[
             generic_public.subnet_share
         ],  # the VPC itself isn't actually shared with the other accounts directly, it's only shared via the subnet, so need to wait for that RAM share to be created
     )

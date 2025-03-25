@@ -71,10 +71,10 @@ def tag_shared_resource(  # noqa: PLR0913 # this is a lot of arguments, but they
     resource_name: str,
     resource_id: Output[str],
     parent: Resource,
-    additional_depends_on: list[Resource] | None = None,
+    depends_on: list[Resource] | None = None,
 ):
-    if additional_depends_on is None:
-        additional_depends_on = []
+    if depends_on is None:
+        depends_on = [parent]
     for account_id, provider in providers.items():
         for tag in tags:
             _ = Tag(
@@ -86,7 +86,7 @@ def tag_shared_resource(  # noqa: PLR0913 # this is a lot of arguments, but they
                     provider=provider,
                     delete_before_replace=True,
                     parent=parent,
-                    depends_on=[parent, *additional_depends_on],
+                    depends_on=depends_on,
                 ),
             )
 
