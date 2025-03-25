@@ -120,7 +120,7 @@ manage_github_repos:
     default: no
 
 add_nat_to_central_networking:
-    type:
+    type: bool
     help: Do you want to add a NAT Gateway to the central networking VCP (this will incur costs...around $30/month)?
     default: no
 
