@@ -176,7 +176,8 @@ VIEW_ONLY_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
 EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aws.amazon.com/blogs/security/how-to-enable-secure-seamless-single-sign-on-to-amazon-ec2-windows-instances-with-aws-sso/
     name="SsoIntoEc2",
     description="The ability to SSO Login into EC2 instances via Systems Manager",
-    relay_state="https://console.aws.amazon.com/ec2/home?#Instances:v=3;$case=tags:true%5C,client:false;$regex=tags:false%5C,client:false",
+    # TODO: don't hardcode us-east-1
+    relay_state="https://us-east-1.console.aws.amazon.com/ec2/home?#Instances:v=3;$case=tags:true%5C,client:false;$regex=tags:false%5C,client:false",
     inline_policy_callable=lambda: get_policy_document(
         statements=[
             GetPolicyDocumentStatementArgs(
@@ -198,9 +199,9 @@ EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aw
                 resources=["*"],
             ),
             GetPolicyDocumentStatementArgs(
-                sid="EC2StartStop",
+                sid="EC2Management",
                 effect="Allow",
-                actions=["ec2:StartInstances", "ec2:StopInstances", "ec2:RebootInstances"],
+                actions=["ec2:StartInstances", "ec2:StopInstances", "ec2:RebootInstances", "ec2:GetConsoleOutput"],
                 resources=["arn:aws:ec2:*:*:instance/*"],
                 conditions=[
                     GetPolicyDocumentStatementConditionArgs(
@@ -212,7 +213,12 @@ EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aw
             GetPolicyDocumentStatementArgs(
                 sid="SSM",
                 effect="Allow",
-                actions=["ssm:DescribeInstanceProperties", "ssm:GetCommandInvocation", "ssm:GetInventorySchema"],
+                actions=[
+                    "ssm:DescribeInstanceProperties",
+                    "ssm:GetCommandInvocation",
+                    "ssm:GetInventorySchema",
+                    "ssm:DescribeInstancesInformation",
+                ],
                 resources=["*"],
             ),
             GetPolicyDocumentStatementArgs(
