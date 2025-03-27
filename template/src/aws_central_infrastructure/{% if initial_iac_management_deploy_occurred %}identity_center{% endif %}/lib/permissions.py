@@ -2,6 +2,7 @@ from collections.abc import Callable
 from typing import Any
 from typing import override
 
+from ephemeral_pulumi_deploy import common_tags
 from pulumi import ComponentResource
 from pulumi import ResourceOptions
 from pulumi_aws import identitystore as identitystore_classic
@@ -44,6 +45,7 @@ class AwsSsoPermissionSet(ComponentResource):
         description: str,
         managed_policies: list[str] | None = None,
         inline_policy: str | None = None,
+        relay_state: str | None = None,
     ):
         super().__init__("labauto:AwsSsoPermissionSet", name, None)
         if managed_policies is None:
@@ -56,6 +58,8 @@ class AwsSsoPermissionSet(ComponentResource):
             description=description,
             session_duration="PT12H",
             opts=ResourceOptions(parent=self),
+            relay_state=relay_state,
+            tags=common_tags(),
         )
         self.permission_set_arn = permission_set.arn
         for policy_name in managed_policies:
@@ -89,6 +93,7 @@ class AwsSsoPermissionSetContainer(BaseModel):
         max_length=10,  # AWS default limit
     )
     inline_policy_callable: Callable[[], str] | None = None
+    relay_state: str | None = None
     _permission_set: AwsSsoPermissionSet | None = None
 
     def create_permission_set(self, inline_policy: str | None = None) -> AwsSsoPermissionSet:
@@ -99,6 +104,7 @@ class AwsSsoPermissionSetContainer(BaseModel):
             description=self.description,
             managed_policies=self.managed_policies,
             inline_policy=inline_policy,
+            relay_state=self.relay_state,
         )
         return self._permission_set
 
@@ -170,6 +176,7 @@ VIEW_ONLY_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
 EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aws.amazon.com/blogs/security/how-to-enable-secure-seamless-single-sign-on-to-amazon-ec2-windows-instances-with-aws-sso/
     name="SsoIntoEc2",
     description="The ability to SSO Login into EC2 instances via Systems Manager",
+    relay_state="https://console.aws.amazon.com/ec2/home?#Instances:v=3;$case=tags:true%5C,client:false;$regex=tags:false%5C,client:false",
     inline_policy_callable=lambda: get_policy_document(
         statements=[
             GetPolicyDocumentStatementArgs(
@@ -195,7 +202,12 @@ EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aw
                 effect="Allow",
                 actions=["ec2:StartInstances", "ec2:StopInstances", "ec2:RebootInstances"],
                 resources=["arn:aws:ec2:*:*:instance/*"],
-                # TODO: figure out how to lock this down to the intended instances...in theory a condition using ec2:ResourceTag/UserAccess and a value of sts:RoleSessionName is supposed to work, but it didn't seem to
+                conditions=[
+                    GetPolicyDocumentStatementConditionArgs(
+                        test="StringLike", variable="ec2:ResourceTag/UserAccess", values=["*--Everyone--*"]
+                    )
+                ],
+                # TODO: figure out how to lock this down to the intended instances...in theory a condition using ec2:ResourceTag/UserAccess and a value of sts:RoleSessionName is supposed to work, but it didn't seem to principalArn may be a potential option
             ),
             GetPolicyDocumentStatementArgs(
                 sid="SSM",
