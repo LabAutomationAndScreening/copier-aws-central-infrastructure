@@ -22,11 +22,15 @@ from pydantic import ConfigDict
 from aws_central_infrastructure.iac_management.lib import ORG_MANAGED_SSM_PARAM_PREFIX
 from aws_central_infrastructure.iac_management.lib import AwsAccountId
 from aws_central_infrastructure.iac_management.lib import AwsAccountInfo
+from aws_central_infrastructure.iac_management.lib import AwsLogicalWorkload
+from aws_central_infrastructure.iac_management.lib import WorkloadName
 from aws_central_infrastructure.iac_management.lib import create_classic_providers
 from aws_central_infrastructure.iac_management.lib import create_providers
-from aws_central_infrastructure.iac_management.lib import load_workload_info
 
 CENTRAL_NETWORKING_SSM_PREFIX = f"{ORG_MANAGED_SSM_PARAM_PREFIX}/central-networking"
+GENERIC_VPC_NAME = "generic-central"
+GENERIC_PUBLIC_SUBNET_NAME = "generic-central-public"
+GENERIC_PRIVATE_SUBNET_NAME = "generic-central-private"
 
 
 def tag_args_to_aws_cli_str(tag_args: list[TagArgs]) -> str:
@@ -84,17 +88,14 @@ def tag_shared_resource(  # noqa: PLR0913 # this is a lot of arguments, but they
 
 
 class AllAccountProviders(ComponentResource):
-    def __init__(
-        self,
-    ):
+    def __init__(self, *, workloads_info: dict[WorkloadName, AwsLogicalWorkload]):
         super().__init__(
             "labauto:AllOrganizationAwsAccountProviders",
             append_resource_suffix(),
             None,
         )
-        workloads_dict, _ = load_workload_info()
         all_accounts: list[AwsAccountInfo] = []
-        for workload_info in workloads_dict.values():
+        for workload_info in workloads_info.values():
             all_accounts.extend(
                 [*workload_info.prod_accounts, *workload_info.staging_accounts, *workload_info.dev_accounts]
             )
@@ -157,6 +158,7 @@ class SharedSubnet(ComponentResource):
         config: SharedSubnetConfig,
         org_arn: str,
         all_providers: AllAccountProviders,
+        all_subnets: dict[str, Self],
     ):
         super().__init__(
             "labauto:CentralNetworkingSharedSubnet",
@@ -164,6 +166,7 @@ class SharedSubnet(ComponentResource):
             None,
             opts=ResourceOptions(parent=config.vpc),
         )
+        all_subnets[config.name] = self
         subnet_tags = [TagArgs(key="Name", value=config.name), *common_tags_native()]
         subnet = ec2.Subnet(
             append_resource_suffix(config.name),
