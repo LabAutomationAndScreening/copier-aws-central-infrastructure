@@ -40,7 +40,7 @@ class ContextUpdater(ContextHook):
         context["typescript_version"] = "^5.8.2"
 
         context["gha_checkout"] = "v4.2.2"
-        context["gha_setup_python"] = "v5.4.0"
+        context["gha_setup_python"] = "v5.5.0"
         context["gha_cache"] = "v4.2.2"
         context["gha_upload_artifact"] = "v4.6.2"
         context["gha_download_artifact"] = "v4.2.1"
