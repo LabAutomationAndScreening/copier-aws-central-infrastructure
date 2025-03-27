@@ -1,3 +1,6 @@
+from typing import Literal
+from typing import Self
+
 import pulumi_aws
 from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import common_tags
@@ -17,24 +20,13 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 
 from aws_central_infrastructure.iac_management.lib import ORG_MANAGED_SSM_PARAM_PREFIX
+from aws_central_infrastructure.iac_management.lib import AwsAccountId
 from aws_central_infrastructure.iac_management.lib import AwsAccountInfo
 from aws_central_infrastructure.iac_management.lib import create_classic_providers
 from aws_central_infrastructure.iac_management.lib import create_providers
 from aws_central_infrastructure.iac_management.lib import load_workload_info
 
 CENTRAL_NETWORKING_SSM_PREFIX = f"{ORG_MANAGED_SSM_PARAM_PREFIX}/central-networking"
-
-
-class SharedSubnetConfig(BaseModel):
-    name: str
-    cidr_block: str
-    map_public_ip_on_launch: bool = False
-    route_to_internet_gateway: bool = False
-    route_to_nat_gateway: ec2.NatGateway | None = None
-    create_nat: bool = False  # Note! NATs must (should?) be in the same availability zone as the subnet they serve (i.e. the public subnet the NAT is in must be the same AZ as the private subnet routing to it)
-    availability_zone_id: str = "use1-az1"  # must use ID, not name https://docs.aws.amazon.com/vpc/latest/userguide/vpc-sharing-share-subnet-working-with.html
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 def tag_args_to_aws_cli_str(tag_args: list[TagArgs]) -> str:
@@ -111,12 +103,13 @@ class AllAccountProviders(ComponentResource):
 
 
 class CentralNetworkingVpc(ComponentResource):
-    def __init__(self, *, name: str, all_providers: AllAccountProviders):
+    def __init__(self, *, name: str, all_providers: AllAccountProviders, all_vpcs: dict[str, Self]):
         super().__init__(
             "labauto:CentralNetworkingVpc",
             append_resource_suffix(name),
             None,
         )
+        all_vpcs[name] = self
         self.tag_name = f"{name}-central-vpc"
         self.vpc_tags = [TagArgs(key="Name", value=self.tag_name), *common_tags_native()]
         self.vpc = ec2.Vpc(
@@ -141,11 +134,26 @@ class CentralNetworkingVpc(ComponentResource):
         )
 
 
+class SharedSubnetConfig(BaseModel):
+    name: str
+    vpc: CentralNetworkingVpc
+    cidr_block: str
+    map_public_ip_on_launch: bool = False
+    route_to_internet_gateway: bool = False
+    route_to_nat_gateway: ec2.NatGateway | None = None
+    create_nat: bool = False  # Note! NATs must (should?) be in the same availability zone as the subnet they serve (i.e. the public subnet the NAT is in must be the same AZ as the private subnet routing to it)
+    availability_zone_id: str = "use1-az1"  # must use ID, not name https://docs.aws.amazon.com/vpc/latest/userguide/vpc-sharing-share-subnet-working-with.html
+    accounts_to_share_to: list[
+        AwsAccountId | Literal["all"]
+    ]  # list of account IDs to share the subnet to, or 'all' to share to all accounts in the organization
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
 class SharedSubnet(ComponentResource):
     def __init__(
         self,
         *,
-        vpc: CentralNetworkingVpc,
         config: SharedSubnetConfig,
         org_arn: str,
         all_providers: AllAccountProviders,
@@ -154,12 +162,12 @@ class SharedSubnet(ComponentResource):
             "labauto:CentralNetworkingSharedSubnet",
             append_resource_suffix(config.name),
             None,
-            opts=ResourceOptions(parent=vpc),
+            opts=ResourceOptions(parent=config.vpc),
         )
         subnet_tags = [TagArgs(key="Name", value=config.name), *common_tags_native()]
         subnet = ec2.Subnet(
             append_resource_suffix(config.name),
-            vpc_id=vpc.vpc.id,
+            vpc_id=config.vpc.vpc.id,
             availability_zone_id=config.availability_zone_id,
             cidr_block=config.cidr_block,
             map_public_ip_on_launch=config.map_public_ip_on_launch,
@@ -188,7 +196,7 @@ class SharedSubnet(ComponentResource):
         route_table_tags = [TagArgs(key="Name", value=config.name), *common_tags_native()]
         route_table = ec2.RouteTable(
             append_resource_suffix(config.name),
-            vpc_id=vpc.vpc.id,
+            vpc_id=config.vpc.vpc.id,
             tags=route_table_tags,
             opts=ResourceOptions(parent=self),
         )
@@ -211,7 +219,7 @@ class SharedSubnet(ComponentResource):
                 append_resource_suffix(f"{config.name}-to-igw"),
                 route_table_id=route_table.id,
                 destination_cidr_block="0.0.0.0/0",
-                gateway_id=vpc.igw.id,
+                gateway_id=config.vpc.igw.id,
                 opts=ResourceOptions(parent=route_table),
             )
         if config.route_to_nat_gateway is not None:
@@ -227,7 +235,7 @@ class SharedSubnet(ComponentResource):
                 append_resource_suffix(f"{config.name}-nat"),
                 domain="vpc",
                 tags=common_tags_native(),
-                opts=ResourceOptions(parent=self, depends_on=[vpc.igw]),
+                opts=ResourceOptions(parent=self, depends_on=[config.vpc.igw]),
             )
             self.nat_gateway = ec2.NatGateway(
                 append_resource_suffix(config.name),
