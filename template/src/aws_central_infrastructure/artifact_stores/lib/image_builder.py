@@ -1,21 +1,24 @@
-import base64
 import inspect
 
 import boto3
 from ephemeral_pulumi_deploy import append_resource_suffix
-from ephemeral_pulumi_deploy import common_tags_native
+from ephemeral_pulumi_deploy import common_tags
 from ephemeral_pulumi_deploy import get_config_str
+from lab_auto_pulumi import GENERIC_CENTRAL_PRIVATE_SUBNET_NAME
+from lab_auto_pulumi import GENERIC_CENTRAL_PUBLIC_SUBNET_NAME
+from lab_auto_pulumi import GENERIC_CENTRAL_VPC_NAME
+from lab_auto_pulumi import Ec2WithRdp
 from pulumi import ComponentResource
 from pulumi import Output
 from pulumi import ResourceOptions
 from pulumi import export
+from pulumi_aws.ec2 import AmiFromInstance
+from pulumi_aws.ec2 import AmiLaunchPermission
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
-from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
 from pulumi_aws.iam import RolePolicy
 from pulumi_aws.iam import get_policy_document
+from pulumi_aws.organizations import get_organization
 from pulumi_aws_native import TagArgs
-from pulumi_aws_native import ec2
-from pulumi_aws_native import iam
 from pydantic import BaseModel
 from pydantic import Field
 
@@ -25,16 +28,24 @@ from aws_central_infrastructure.central_networking.lib import CREATE_PRIVATE_SUB
 USER_ACCESS_TAG_DELIMITER = "--"
 
 
+class NewImageConfig(BaseModel):
+    name: str
+    description: str
+    description_of_how_image_was_built: str
+
+
 class ImageBuilderConfig(BaseModel):
     central_networking_subnet_name: str = Field(
-        default_factory=lambda: "generic-central-private" if CREATE_PRIVATE_SUBNET else "generic-central-public"
+        default_factory=lambda: GENERIC_CENTRAL_PRIVATE_SUBNET_NAME
+        if CREATE_PRIVATE_SUBNET
+        else GENERIC_CENTRAL_PUBLIC_SUBNET_NAME
     )
-    central_networking_vpc_name: str = "generic"
+    central_networking_vpc_name: str = GENERIC_CENTRAL_VPC_NAME
     builder_resource_name: str
     instance_type: str
     user_access_tags: list[str] = Field(default_factory=lambda: ["Everyone"])
     base_image_id: str
-    new_image_name: str | None = None
+    new_image_config: NewImageConfig | None = None
 
 
 class ImageShareConfig(BaseModel):
@@ -65,27 +76,30 @@ class Ec2ImageBuilder(ComponentResource):
             append_resource_suffix(config.builder_resource_name),
             None,
         )
-        instance_role = iam.Role(
-            append_resource_suffix(f"{resource_name}"),
-            assume_role_policy_document=get_policy_document(
-                statements=[
-                    GetPolicyDocumentStatementArgs(
-                        sid="AllowSsmAgentToAssumeRole",
-                        effect="Allow",
-                        actions=["sts:AssumeRole"],
-                        principals=[
-                            GetPolicyDocumentStatementPrincipalArgs(type="Service", identifiers=["ec2.amazonaws.com"])
-                        ],
-                    )
-                ]
-            ).json,
-            managed_policy_arns=["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"],
-            tags=common_tags_native(),
-            opts=ResourceOptions(parent=self),
+        user_data_plain = manual_artifacts_bucket_name.apply(
+            lambda bucket_name: inspect.cleandoc(
+                f"""<powershell>
+                setx MANUAL_ARTIFACTS_BUCKET_NAME "{bucket_name}" /M
+                </powershell>"""
+            )
+        )
+        ec2_builder = Ec2WithRdp(
+            name=resource_name,
+            central_networking_subnet_name=config.central_networking_subnet_name,
+            instance_type=config.instance_type,
+            image_id=config.base_image_id,
+            central_networking_vpc_name=config.central_networking_vpc_name,
+            user_data=user_data_plain,
+            additional_instance_tags=[
+                TagArgs(
+                    key="UserAccess",
+                    value=f"{USER_ACCESS_TAG_DELIMITER}{USER_ACCESS_TAG_DELIMITER.join(config.user_access_tags)}{USER_ACCESS_TAG_DELIMITER}",
+                )
+            ],
         )
         _ = RolePolicy(
             append_resource_suffix(f"{resource_name}-s3-read"),
-            role=instance_role.role_name,  # type: ignore[reportArgumentType] # pyright somehow thinks that a role_name can be None...which cannot happen
+            role=ec2_builder.instance_role.role_name,  # type: ignore[reportArgumentType] # pyright somehow thinks that a role_name can be None...which cannot happen
             policy=manual_artifacts_bucket_name.apply(
                 lambda bucket_name: get_policy_document(
                     statements=[
@@ -98,51 +112,25 @@ class Ec2ImageBuilder(ComponentResource):
                     ]
                 ).json
             ),
-            opts=ResourceOptions(parent=instance_role),
+            opts=ResourceOptions(parent=ec2_builder.instance_role),
         )
-        instance_profile = iam.InstanceProfile(
-            append_resource_suffix(resource_name),
-            roles=[instance_role.role_name],  # type: ignore[reportArgumentType] # pyright thinks only inputs can be set as role names, but Outputs seem to work fine
-            opts=ResourceOptions(parent=instance_role),
-        )
-        sg = ec2.SecurityGroup(
-            append_resource_suffix(resource_name),
-            vpc_id=get_central_networking_vpc_id(config.central_networking_vpc_name),
-            group_description="Allow all outbound traffic for SSM access",
-            security_group_egress=[
-                ec2.SecurityGroupEgressArgs(ip_protocol="-1", from_port=0, to_port=0, cidr_ip="0.0.0.0/0")
-            ],
-            tags=common_tags_native(),
-            opts=ResourceOptions(parent=self),
-        )
-        user_data_plain = manual_artifacts_bucket_name.apply(
-            lambda bucket_name: inspect.cleandoc(
-                f"""<powershell>
-                setx MANUAL_ARTIFACTS_BUCKET_NAME "{bucket_name}" /M
-                </powershell>"""
+        if config.new_image_config is not None:
+            # TODO: stop the instance before taking the snapshot just for extra safety (probably via a pulumi Command)
+            new_ami = AmiFromInstance(  # can take 12 minutes-ish for Windows Server
+                append_resource_suffix(f"{config.builder_resource_name}-ami"),
+                description=config.new_image_config.description,
+                name=config.new_image_config.name,
+                source_instance_id=ec2_builder.instance.id,
+                tags={"Name": config.new_image_config.name, **common_tags()},
+                opts=ResourceOptions(parent=self),
             )
-        )
-        _ = ec2.Instance(
-            append_resource_suffix(resource_name),
-            instance_type=config.instance_type,
-            image_id=config.base_image_id,
-            subnet_id=get_central_networking_subnet_id(config.central_networking_subnet_name),
-            security_group_ids=[sg.id],
-            iam_instance_profile=instance_profile.instance_profile_name,  # type: ignore[reportArgumentType] # pyright thinks only inputs can be set as instance profile names, but Outputs seem to work fine
-            tags=[
-                TagArgs(key="Name", value=resource_name),
-                TagArgs(
-                    key="UserAccess",
-                    value=f"{USER_ACCESS_TAG_DELIMITER}{USER_ACCESS_TAG_DELIMITER.join(config.user_access_tags)}{USER_ACCESS_TAG_DELIMITER}",
-                ),
-                *common_tags_native(),
-            ],
-            user_data=user_data_plain.apply(
-                lambda user_data: base64.b64encode(user_data.encode("utf-8")).decode("utf-8")
-            ),
-            opts=ResourceOptions(parent=self),
-        )
-        export(f"-user-data-for-{append_resource_suffix(config.builder_resource_name)}", user_data_plain)
+            export(f"{config.new_image_config.name}-ami-id", new_ami.id)
+            _ = AmiLaunchPermission(
+                append_resource_suffix(f"{config.builder_resource_name}-ami-share"),
+                image_id=new_ami.id,
+                organization_arn=get_organization().arn,  # TODO: pass this in so the API isn't invoked repeatedly
+                opts=ResourceOptions(parent=self),
+            )
 
 
 def create_image_builders(

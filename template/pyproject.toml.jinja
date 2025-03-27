@@ -21,6 +21,7 @@ dependencies = [
     "pulumi-command>={% endraw %}{{ pulumi_command_version }}{% raw %}",{% endraw %}{% if manage_github_repos %}{% raw %}
     "pulumi-github>=6.7.0",{% endraw %}{% endif %}{% raw %}
     "ephemeral-pulumi-deploy>={% endraw %}{{ ephemeral_pulumi_deploy_version }}{% raw %}",
+    "lab-auto-pulumi>={% endraw %}{{ lab_auto_pulumi_version }}{% raw %}",
     "boto3>={% endraw %}{{ boto3_version }}{% raw %}",
     "boto3-stubs[all]=={% endraw %}1.36.3{% raw %}", # there's a bug/conflict in 1.37.4 affecting pyright: https://github.com/LabAutomationAndScreening/copier-cloud-courier-infrastructure/actions/runs/13596390146/job/38014193360#step:11:69
     "pydantic>={% endraw %}{{ pydantic_version }}{% raw %}",
