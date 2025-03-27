@@ -22,7 +22,7 @@ def pulumi_program() -> None:
     # TODO: ensure all subnets have unique names
     # TODO: ensure CIDR ranges don't conflict between subnets (and are valid within the VPC)
     all_vpcs: dict[str, CentralNetworkingVpc] = {}
-    generic_vpc = CentralNetworkingVpc(name="generic", all_providers=all_providers, all_vpcs=all_vpcs)
+    generic_vpc = CentralNetworkingVpc(name="generic-central", all_providers=all_providers, all_vpcs=all_vpcs)
     generic_public = SharedSubnet(
         config=SharedSubnetConfig(
             name="generic-central-public",
