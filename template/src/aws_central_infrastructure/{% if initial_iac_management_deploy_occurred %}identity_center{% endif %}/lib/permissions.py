@@ -201,7 +201,13 @@ EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aw
             GetPolicyDocumentStatementArgs(
                 sid="EC2Management",
                 effect="Allow",
-                actions=["ec2:StartInstances", "ec2:StopInstances", "ec2:RebootInstances", "ec2:GetConsoleOutput"],
+                actions=[
+                    "ec2:StartInstances",
+                    "ec2:StopInstances",
+                    "ec2:RebootInstances",
+                    "ec2:GetConsoleOutput",
+                    "ssm:GetConnectionStatus",
+                ],
                 resources=["arn:aws:ec2:*:*:instance/*"],
                 conditions=[
                     GetPolicyDocumentStatementConditionArgs(
@@ -217,7 +223,7 @@ EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aw
                     "ssm:DescribeInstanceProperties",
                     "ssm:GetCommandInvocation",
                     "ssm:GetInventorySchema",
-                    "ssm:DescribeInstancesInformation",
+                    "ssm:DescribeInstanceInformation",
                 ],
                 resources=["*"],
             ),
