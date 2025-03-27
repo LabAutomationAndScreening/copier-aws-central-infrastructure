@@ -6,9 +6,9 @@ from aws_central_infrastructure.iac_management.lib import load_workload_info
 
 from ..subnets import define_subnets
 from .constants import CREATE_PRIVATE_SUBNET
-from .network import GENERIC_PRIVATE_SUBNET_NAME
-from .network import GENERIC_PUBLIC_SUBNET_NAME
-from .network import GENERIC_VPC_NAME
+from .network import GENERIC_CENTRAL_PRIVATE_SUBNET_NAME
+from .network import GENERIC_CENTRAL_PUBLIC_SUBNET_NAME
+from .network import GENERIC_CENTRAL_VPC_NAME
 from .network import AllAccountProviders
 from .network import CentralNetworkingVpc
 from .network import SharedSubnet
@@ -27,12 +27,13 @@ def pulumi_program() -> None:
     # TODO: ensure all VPCs have unique names
     # TODO: ensure all subnets have unique names
     # TODO: ensure CIDR ranges don't conflict between subnets (and are valid within the VPC)
+    # TODO: define ENUMs for cidr range sizes...in a private subnet, 5 of the IP addresses seem to be consumed by default already, so keep that in mind
     all_vpcs: dict[str, CentralNetworkingVpc] = {}
     all_subnets: dict[str, SharedSubnet] = {}
-    generic_vpc = CentralNetworkingVpc(name=GENERIC_VPC_NAME, all_providers=all_providers, all_vpcs=all_vpcs)
+    generic_vpc = CentralNetworkingVpc(name=GENERIC_CENTRAL_VPC_NAME, all_providers=all_providers, all_vpcs=all_vpcs)
     generic_public = SharedSubnet(
         config=SharedSubnetConfig(
-            name=GENERIC_PUBLIC_SUBNET_NAME,
+            name=GENERIC_CENTRAL_PUBLIC_SUBNET_NAME,
             vpc=generic_vpc,
             map_public_ip_on_launch=True,
             cidr_block="10.0.1.0/28",
@@ -53,11 +54,12 @@ def pulumi_program() -> None:
         depends_on=[
             generic_public.subnet_share
         ],  # the VPC itself isn't actually shared with the other accounts directly, it's only shared via the subnet, so need to wait for that RAM share to be created
+        accounts_to_share_to=["all"],
     )
     if CREATE_PRIVATE_SUBNET:
         _ = SharedSubnet(  # this should only be used for quick proof of concepts, dedicated subnets should be made for long term use
             config=SharedSubnetConfig(
-                name=GENERIC_PRIVATE_SUBNET_NAME,
+                name=GENERIC_CENTRAL_PRIVATE_SUBNET_NAME,
                 vpc=generic_vpc,
                 cidr_block="10.0.1.16/28",
                 route_to_nat_gateway=generic_public.nat_gateway,

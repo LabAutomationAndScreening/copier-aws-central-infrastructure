@@ -28,9 +28,9 @@ from aws_central_infrastructure.iac_management.lib import create_classic_provide
 from aws_central_infrastructure.iac_management.lib import create_providers
 
 CENTRAL_NETWORKING_SSM_PREFIX = f"{ORG_MANAGED_SSM_PARAM_PREFIX}/central-networking"
-GENERIC_VPC_NAME = "generic-central"
-GENERIC_PUBLIC_SUBNET_NAME = "generic-central-public"
-GENERIC_PRIVATE_SUBNET_NAME = "generic-central-private"
+GENERIC_CENTRAL_VPC_NAME = "generic-central"
+GENERIC_CENTRAL_PUBLIC_SUBNET_NAME = "generic-central-public"
+GENERIC_CENTRAL_PRIVATE_SUBNET_NAME = "generic-central-private"
 
 
 def tag_args_to_aws_cli_str(tag_args: list[TagArgs]) -> str:
@@ -68,23 +68,25 @@ def tag_shared_resource(  # noqa: PLR0913 # this is a lot of arguments, but they
     resource_id: Output[str],
     parent: Resource,
     depends_on: list[Resource] | None = None,
+    accounts_to_share_to: list[AwsAccountId | Literal["all"]],
 ):
     if depends_on is None:
         depends_on = [parent]
     for account_id, provider in providers.items():
-        for tag in tags:
-            _ = Tag(
-                append_resource_suffix(f"tag-{resource_name}-{account_id}-{tag.key}", max_length=150),
-                key=tag.key,
-                value=tag.value,
-                resource_id=resource_id,
-                opts=ResourceOptions(
-                    provider=provider,
-                    delete_before_replace=True,
-                    parent=parent,
-                    depends_on=depends_on,
-                ),
-            )
+        if "all" in accounts_to_share_to or account_id in accounts_to_share_to:
+            for tag in tags:
+                _ = Tag(
+                    append_resource_suffix(f"tag-{resource_name}-{account_id}-{tag.key}", max_length=150),
+                    key=tag.key,
+                    value=tag.value,
+                    resource_id=resource_id,
+                    opts=ResourceOptions(
+                        provider=provider,
+                        delete_before_replace=True,
+                        parent=parent,
+                        depends_on=depends_on,
+                    ),
+                )
 
 
 class AllAccountProviders(ComponentResource):
@@ -166,6 +168,7 @@ class SharedSubnet(ComponentResource):
             None,
             opts=ResourceOptions(parent=config.vpc),
         )
+
         all_subnets[config.name] = self
         subnet_tags = [TagArgs(key="Name", value=config.name), *common_tags_native()]
         subnet = ec2.Subnet(
@@ -177,6 +180,7 @@ class SharedSubnet(ComponentResource):
             tags=subnet_tags,
             opts=ResourceOptions(parent=self),
         )
+        principals = [org_arn if value == "all" else value for value in config.accounts_to_share_to]
         self.subnet_share = ram.ResourceShare(
             append_resource_suffix(config.name),
             resource_arns=[
@@ -184,7 +188,7 @@ class SharedSubnet(ComponentResource):
                     lambda subnet_id: f"arn:aws:ec2:{pulumi_aws.config.region}:{get_aws_account_id()}:subnet/{subnet_id}"
                 )
             ],
-            principals=[org_arn],
+            principals=principals,
             opts=ResourceOptions(parent=self),
             allow_external_principals=False,
             tags=common_tags_native(),
@@ -195,6 +199,7 @@ class SharedSubnet(ComponentResource):
             resource_name=f"{config.name}-subnet",
             resource_id=subnet.subnet_id,
             parent=self.subnet_share,
+            accounts_to_share_to=config.accounts_to_share_to,
         )
         route_table_tags = [TagArgs(key="Name", value=config.name), *common_tags_native()]
         route_table = ec2.RouteTable(
@@ -209,6 +214,7 @@ class SharedSubnet(ComponentResource):
             resource_name=f"{config.name}-route-table",
             resource_id=route_table.id,
             parent=self.subnet_share,
+            accounts_to_share_to=config.accounts_to_share_to,
         )
 
         _ = ec2.SubnetRouteTableAssociation(
