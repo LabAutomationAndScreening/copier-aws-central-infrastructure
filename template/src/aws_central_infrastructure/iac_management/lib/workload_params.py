@@ -3,15 +3,14 @@ from typing import TYPE_CHECKING
 import boto3
 from ephemeral_pulumi_deploy import get_config_str
 from ephemeral_pulumi_deploy.utils import common_tags
+from lab_auto_pulumi import MANAGEMENT_ACCOUNT_ID_PARAM_NAME
+from lab_auto_pulumi import WORKLOAD_INFO_SSM_PARAM_PREFIX
+from lab_auto_pulumi import AwsLogicalWorkload
+from lab_auto_pulumi import WorkloadName
 from pulumi import ComponentResource
 from pulumi import ResourceOptions
 from pulumi_aws_native import Provider
 from pulumi_aws_native import ssm
-
-from .github_oidc_lib import WorkloadName
-from .shared_lib import MANAGEMENT_ACCOUNT_ID_PARAM_NAME
-from .shared_lib import WORKLOAD_INFO_SSM_PARAM_PREFIX
-from .shared_lib import AwsLogicalWorkload
 
 if TYPE_CHECKING:
     from mypy_boto3_ssm.type_defs import ParameterMetadataTypeDef

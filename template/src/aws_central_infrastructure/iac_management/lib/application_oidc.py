@@ -1,4 +1,6 @@
 from ephemeral_pulumi_deploy import get_aws_account_id
+from lab_auto_pulumi import AwsLogicalWorkload
+from lab_auto_pulumi import WorkloadName
 from pulumi_aws.iam import get_policy_document
 from pulumi_aws_native import iam
 
@@ -9,10 +11,8 @@ from .constants import CLOUD_COURIER_INFRA_REPO_NAME
 from .constants import CONFIGURE_CLOUD_COURIER
 from .github_oidc_lib import CODE_ARTIFACT_SERVICE_BEARER_STATEMENT
 from .github_oidc_lib import GithubOidcConfig
-from .github_oidc_lib import WorkloadName
 from .github_oidc_lib import create_oidc_for_single_account_workload
 from .github_oidc_lib import create_oidc_for_standard_workload
-from .shared_lib import AwsLogicalWorkload
 
 
 def create_application_oidc_if_needed(

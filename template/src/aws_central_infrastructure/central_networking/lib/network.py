@@ -6,6 +6,11 @@ from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import common_tags
 from ephemeral_pulumi_deploy import common_tags_native
 from ephemeral_pulumi_deploy import get_aws_account_id
+from lab_auto_pulumi import CENTRAL_NETWORKING_SSM_PREFIX
+from lab_auto_pulumi import AwsAccountId
+from lab_auto_pulumi import AwsAccountInfo
+from lab_auto_pulumi import AwsLogicalWorkload
+from lab_auto_pulumi import WorkloadName
 from pulumi import ComponentResource
 from pulumi import Output
 from pulumi import Resource
@@ -19,18 +24,8 @@ from pulumi_aws_native import ssm
 from pydantic import BaseModel
 from pydantic import ConfigDict
 
-from aws_central_infrastructure.iac_management.lib import ORG_MANAGED_SSM_PARAM_PREFIX
-from aws_central_infrastructure.iac_management.lib import AwsAccountId
-from aws_central_infrastructure.iac_management.lib import AwsAccountInfo
-from aws_central_infrastructure.iac_management.lib import AwsLogicalWorkload
-from aws_central_infrastructure.iac_management.lib import WorkloadName
 from aws_central_infrastructure.iac_management.lib import create_classic_providers
 from aws_central_infrastructure.iac_management.lib import create_providers
-
-CENTRAL_NETWORKING_SSM_PREFIX = f"{ORG_MANAGED_SSM_PARAM_PREFIX}/central-networking"
-GENERIC_CENTRAL_VPC_NAME = "generic-central"
-GENERIC_CENTRAL_PUBLIC_SUBNET_NAME = "generic-central-public"
-GENERIC_CENTRAL_PRIVATE_SUBNET_NAME = "generic-central-private"
 
 
 def tag_args_to_aws_cli_str(tag_args: list[TagArgs]) -> str:

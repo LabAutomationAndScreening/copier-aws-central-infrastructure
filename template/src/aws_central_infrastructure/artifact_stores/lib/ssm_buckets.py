@@ -3,6 +3,8 @@ import logging
 from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import common_tags
 from ephemeral_pulumi_deploy import common_tags_native
+from lab_auto_pulumi import ORG_MANAGED_SSM_PARAM_PREFIX
+from lab_auto_pulumi import AwsLogicalWorkload
 from pulumi import ComponentResource
 from pulumi import ResourceOptions
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
@@ -13,8 +15,6 @@ from pulumi_aws.organizations import get_organization
 from pulumi_aws_native import s3
 from pulumi_aws_native import ssm
 
-from aws_central_infrastructure.iac_management.lib import ORG_MANAGED_SSM_PARAM_PREFIX
-from aws_central_infrastructure.iac_management.lib import AwsLogicalWorkload
 from aws_central_infrastructure.iac_management.lib import create_providers
 from aws_central_infrastructure.iac_management.lib import load_workload_info
 

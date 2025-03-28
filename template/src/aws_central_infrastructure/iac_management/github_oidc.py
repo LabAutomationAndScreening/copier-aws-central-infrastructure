@@ -1,6 +1,7 @@
-from .lib import AwsLogicalWorkload
+from lab_auto_pulumi import AwsLogicalWorkload
+from lab_auto_pulumi import WorkloadName
+
 from .lib import GithubOidcConfig
-from .lib import WorkloadName
 
 
 def generate_oidc(

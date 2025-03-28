@@ -6,6 +6,9 @@ from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
 from ephemeral_pulumi_deploy import get_config_str
 from ephemeral_pulumi_deploy.utils import common_tags
+from lab_auto_pulumi import MANAGEMENT_ACCOUNT_ID_PARAM_NAME
+from lab_auto_pulumi import AwsAccountId
+from lab_auto_pulumi import WorkloadName
 from pulumi import ResourceOptions
 from pulumi import export
 from pulumi_aws_native import Provider
@@ -14,13 +17,10 @@ from pulumi_aws_native import ssm
 
 from .application_oidc import create_application_oidc_if_needed
 from .application_oidc import generate_all_oidc
-from .github_oidc_lib import AwsAccountId
 from .github_oidc_lib import GithubOidcConfig
-from .github_oidc_lib import WorkloadName
 from .github_oidc_lib import deploy_all_oidc
 from .pulumi_bootstrap import AwsWorkloadPulumiBootstrap
 from .pulumi_bootstrap import create_bucket_policy
-from .shared_lib import MANAGEMENT_ACCOUNT_ID_PARAM_NAME
 from .workload_params import WorkloadParams
 from .workload_params import get_management_account_id
 from .workload_params import load_workload_info

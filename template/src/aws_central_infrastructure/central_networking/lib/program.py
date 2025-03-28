@@ -1,14 +1,14 @@
 import logging
 
+from lab_auto_pulumi import GENERIC_CENTRAL_PRIVATE_SUBNET_NAME
+from lab_auto_pulumi import GENERIC_CENTRAL_PUBLIC_SUBNET_NAME
+from lab_auto_pulumi import GENERIC_CENTRAL_VPC_NAME
 from pulumi_aws.organizations import get_organization
 
 from aws_central_infrastructure.iac_management.lib import load_workload_info
 
 from ..subnets import define_subnets
 from .constants import CREATE_PRIVATE_SUBNET
-from .network import GENERIC_CENTRAL_PRIVATE_SUBNET_NAME
-from .network import GENERIC_CENTRAL_PUBLIC_SUBNET_NAME
-from .network import GENERIC_CENTRAL_VPC_NAME
 from .network import AllAccountProviders
 from .network import CentralNetworkingVpc
 from .network import SharedSubnet

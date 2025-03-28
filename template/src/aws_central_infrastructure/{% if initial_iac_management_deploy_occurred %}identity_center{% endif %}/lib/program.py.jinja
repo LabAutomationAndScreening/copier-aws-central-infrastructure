@@ -2,12 +2,12 @@
 
 from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
+from lab_auto_pulumi import AwsLogicalWorkload
 from pulumi import export
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import get_policy_document
 
-from aws_central_infrastructure.iac_management.lib.shared_lib import AwsLogicalWorkload
 from aws_central_infrastructure.iac_management.lib.workload_params import load_workload_info
 
 {% endraw %}{% if configure_cloud_courier %}{% raw %}from ..cloud_courier_permissions import configure_cloud_courier_permissions
