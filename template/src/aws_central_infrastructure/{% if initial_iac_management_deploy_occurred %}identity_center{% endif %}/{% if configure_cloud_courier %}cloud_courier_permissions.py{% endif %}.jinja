@@ -1,4 +1,4 @@
-from aws_central_infrastructure.iac_management.lib import AwsLogicalWorkload
+from lab_auto_pulumi import AwsLogicalWorkload
 
 from .lib import all_created_users
 from .lib.cloud_courier_permissions import create_cloud_courier_permissions
