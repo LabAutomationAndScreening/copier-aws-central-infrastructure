@@ -117,13 +117,15 @@ class Ec2ImageBuilder(ComponentResource):
                 opts=ResourceOptions(parent=ec2_builder.instance_role),
             )
         if config.new_image_config is not None:
-            # TODO: stop the instance before taking the snapshot just for extra safety (probably via a pulumi Command)
+            # TODO: confirm the instance is stopped...because if it wasn't then probably sysprep wasn't run (probably via a pulumi Command)
             # TODO: automatically delete volume snapshots when AMI is registered https://chatgpt.com/c/67e560ba-6558-800f-a1b7-85d119e58191
             new_ami = AmiFromInstance(  # can take 12 minutes-ish for Windows Server
                 append_resource_suffix(f"{config.builder_resource_name}-ami"),
                 description=config.new_image_config.description,
                 name=config.new_image_config.name,
-                source_instance_id="fake" if config.tear_down_builder else ec2_builder.instance.id,  # type: ignore[reportPossiblyUnboundVariable] # this is false positive due to the matching of the conditionals here and above
+                source_instance_id="fake-because-the-instance-is-actually-deleted-now"
+                if config.tear_down_builder
+                else ec2_builder.instance.id,  # type: ignore[reportPossiblyUnboundVariable] # this is false positive due to the matching of the conditionals here and above
                 tags={"Name": config.new_image_config.name, **common_tags()},
                 opts=ResourceOptions(parent=self, ignore_changes=["source_instance_id"]),
             )
