@@ -3,6 +3,8 @@ from typing import TypedDict
 from ephemeral_pulumi_deploy import get_config_str
 from ephemeral_pulumi_deploy.utils import common_tags_native
 from ephemeral_pulumi_deploy.utils import get_aws_account_id
+from lab_auto_pulumi import AwsAccountId
+from lab_auto_pulumi import AwsLogicalWorkload
 from pulumi import ComponentResource
 from pulumi import Output
 from pulumi import ResourceOptions
@@ -17,11 +19,6 @@ from pulumi_aws_native import iam
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
-
-from .shared_lib import AwsLogicalWorkload
-
-type WorkloadName = str
-type AwsAccountId = str
 
 GITHUB_OIDC_URL = "https://token.actions.githubusercontent.com"
 CODE_ARTIFACT_SERVICE_BEARER_STATEMENT = GetPolicyDocumentStatementArgs(

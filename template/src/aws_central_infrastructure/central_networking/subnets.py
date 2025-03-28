@@ -1,5 +1,5 @@
-from aws_central_infrastructure.iac_management.lib import AwsLogicalWorkload
-from aws_central_infrastructure.iac_management.lib import WorkloadName
+from lab_auto_pulumi import AwsLogicalWorkload
+from lab_auto_pulumi import WorkloadName
 
 from .lib import CentralNetworkingVpc
 from .lib import SharedSubnet

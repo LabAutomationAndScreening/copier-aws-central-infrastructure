@@ -3,6 +3,10 @@ import logging
 import pulumi_aws
 from ephemeral_pulumi_deploy import get_config_str
 from ephemeral_pulumi_deploy.utils import common_tags
+from lab_auto_pulumi import ORG_MANAGED_SSM_PARAM_PREFIX
+from lab_auto_pulumi import AwsAccountId
+from lab_auto_pulumi import AwsAccountInfo
+from lab_auto_pulumi import AwsLogicalWorkload
 from pulumi import ComponentResource
 from pulumi import Resource
 from pulumi import ResourceOptions
@@ -17,10 +21,6 @@ from pulumi_aws_native import ProviderAssumeRoleArgs
 from pulumi_aws_native import ssm
 
 from .constants import CENTRAL_INFRA_REPO_NAME
-from .github_oidc_lib import AwsAccountId
-from .shared_lib import ORG_MANAGED_SSM_PARAM_PREFIX
-from .shared_lib import AwsAccountInfo
-from .shared_lib import AwsLogicalWorkload
 
 logger = logging.getLogger(__name__)
 
