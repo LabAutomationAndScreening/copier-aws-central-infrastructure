@@ -46,6 +46,7 @@ class ImageBuilderConfig(BaseModel):
     user_access_tags: list[str] = Field(default_factory=lambda: ["Everyone"])
     base_image_id: str
     new_image_config: NewImageConfig | None = None
+    tear_down_builder: bool = False  # set this to true after the image is created to remove the EC2 instance but leave in place the information of how it was created
 
 
 class ImageShareConfig(BaseModel):
@@ -83,46 +84,50 @@ class Ec2ImageBuilder(ComponentResource):
                 </powershell>"""
             )
         )
-        ec2_builder = Ec2WithRdp(
-            name=resource_name,
-            central_networking_subnet_name=config.central_networking_subnet_name,
-            instance_type=config.instance_type,
-            image_id=config.base_image_id,
-            central_networking_vpc_name=config.central_networking_vpc_name,
-            user_data=user_data_plain,
-            additional_instance_tags=[
-                TagArgs(
-                    key="UserAccess",
-                    value=f"{USER_ACCESS_TAG_DELIMITER}{USER_ACCESS_TAG_DELIMITER.join(config.user_access_tags)}{USER_ACCESS_TAG_DELIMITER}",
-                )
-            ],
-        )
-        _ = RolePolicy(
-            append_resource_suffix(f"{resource_name}-s3-read"),
-            role=ec2_builder.instance_role.role_name,  # type: ignore[reportArgumentType] # pyright somehow thinks that a role_name can be None...which cannot happen
-            policy=manual_artifacts_bucket_name.apply(
-                lambda bucket_name: get_policy_document(
-                    statements=[
-                        GetPolicyDocumentStatementArgs(
-                            sid="ReadManualArtifacts",
-                            effect="Allow",
-                            actions=["s3:GetObject"],
-                            resources=[f"arn:aws:s3:::{bucket_name}/*"],
-                        )
-                    ]
-                ).json
-            ),
-            opts=ResourceOptions(parent=ec2_builder.instance_role),
-        )
+        if not config.tear_down_builder:
+            ec2_builder = Ec2WithRdp(
+                name=resource_name,
+                central_networking_subnet_name=config.central_networking_subnet_name,
+                instance_type=config.instance_type,
+                image_id=config.base_image_id,
+                central_networking_vpc_name=config.central_networking_vpc_name,
+                user_data=user_data_plain,
+                additional_instance_tags=[
+                    TagArgs(
+                        key="UserAccess",
+                        value=f"{USER_ACCESS_TAG_DELIMITER}{USER_ACCESS_TAG_DELIMITER.join(config.user_access_tags)}{USER_ACCESS_TAG_DELIMITER}",
+                    )
+                ],
+            )
+            _ = RolePolicy(
+                append_resource_suffix(f"{resource_name}-s3-read"),
+                role=ec2_builder.instance_role.role_name,  # type: ignore[reportArgumentType] # pyright somehow thinks that a role_name can be None...which cannot happen
+                policy=manual_artifacts_bucket_name.apply(
+                    lambda bucket_name: get_policy_document(
+                        statements=[
+                            GetPolicyDocumentStatementArgs(
+                                sid="ReadManualArtifacts",
+                                effect="Allow",
+                                actions=["s3:GetObject"],
+                                resources=[f"arn:aws:s3:::{bucket_name}/*"],
+                            )
+                        ]
+                    ).json
+                ),
+                opts=ResourceOptions(parent=ec2_builder.instance_role),
+            )
         if config.new_image_config is not None:
-            # TODO: stop the instance before taking the snapshot just for extra safety (probably via a pulumi Command)
+            # TODO: confirm the instance is stopped...because if it wasn't then probably sysprep wasn't run (probably via a pulumi Command)
+            # TODO: automatically delete volume snapshots when AMI is registered https://chatgpt.com/c/67e560ba-6558-800f-a1b7-85d119e58191
             new_ami = AmiFromInstance(  # can take 12 minutes-ish for Windows Server
                 append_resource_suffix(f"{config.builder_resource_name}-ami"),
                 description=config.new_image_config.description,
                 name=config.new_image_config.name,
-                source_instance_id=ec2_builder.instance.id,
+                source_instance_id="fake-because-the-instance-is-actually-deleted-now"
+                if config.tear_down_builder
+                else ec2_builder.instance.id,  # type: ignore[reportPossiblyUnboundVariable] # this is false positive due to the matching of the conditionals here and above
                 tags={"Name": config.new_image_config.name, **common_tags()},
-                opts=ResourceOptions(parent=self),
+                opts=ResourceOptions(parent=self, ignore_changes=["source_instance_id"]),
             )
             export(f"{config.new_image_config.name}-ami-id", new_ami.id)
             _ = AmiLaunchPermission(
