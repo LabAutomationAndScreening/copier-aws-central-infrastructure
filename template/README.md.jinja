@@ -7,8 +7,27 @@
 
 
 # Usage{% endraw %}{% if manage_github_repos %}{% raw %}
-## Managing your organization's GitHub repositories
-The file `src/aws_central_infrastructure/github_repos/repos.py` contains a list of repositories that are managed by this project. To add a new repository, add a new entry to the `configs` list.{% endraw %}{% endif %}{% raw %}
+## Managing your company's GitHub Organization
+### Repositories
+The file `src/aws_central_infrastructure/github_repos/repos.py` contains a list of repositories that are managed by this project. To add a new repository, add a new entry to the `configs` list.
+It's recommended to create a CODEOWNERS file within your repository to distinguish which Teams have the ability to approve Pull Requests---this allows many people to contribute via `push` access, but still gate with approvals.
+
+### Teams
+The file `src/aws_central_infrastructure/github_repos/teams.py` contains a list of teams that are managed by this project. To add a new team, add a new entry to the `configs` list.
+Ensure to assign it appropriate permissions (typically `push`...sometimes referred to as `write` in other contexts) for the repositories it needs access to.
+Teams can have a parent, from which they inherit permissions. This is useful for creating a hierarchy of teams.
+If an explicit parent is not provided in the configuration, the team will have the root `Everyone` team as its parent.
+
+You can grant a Team permissions for a repository even if that repository was not created using this process.
+
+### Initial configuration for Github organization
+It's recommended to set the following permissions for the Organization to guide people towards doing more things via this repository instead of the Console.
+https://github.com/organizations/lab-sync/settings/member_privileges
+
+* Base Permissions: Read
+* Repository Creation: Neither
+* Pages Creation: Neither
+* Allow members to create teams: No{% endraw %}{% endif %}{% raw %}
 
 ## Allowing a git repository to publish a packgae to AWS CodeArtifact
 The file `src/aws_central_infrastructure/artifact_stores/internal_packages.py` contains a list of repositories that are allowed to publish packages to the AWS CodeArtifact registry. To enable a new repository to do so, add a new entry to the `repo_package_claims` list. This ensures that only one git repo has permission to publish that package, and there's no conflicts of two repos overwriting each other's packages.
