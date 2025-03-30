@@ -1,5 +1,4 @@
-from collections.abc import Iterable
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 from typing import Literal
 
 import boto3
@@ -21,6 +20,13 @@ from pulumi_github import RepositoryRulesetRulesPullRequestArgs
 from pulumi_github import RepositoryRulesetRulesRequiredStatusChecksArgs
 from pulumi_github import RepositoryRulesetRulesRequiredStatusChecksRequiredCheckArgs
 from pydantic import BaseModel
+
+from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_REPO_NAME
+
+from .constants import AWS_ORGANIZATION_REPO_NAME
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def create_github_provider() -> Provider:
@@ -55,41 +61,47 @@ class GithubRepoConfig(BaseModel, frozen=True):
     squash_merge_commit_message: str = "PR_BODY"
     require_branch_to_be_up_to_date_before_merge: bool = True
     org_admin_rule_bypass: bool = False
+    require_code_owner_review: bool = True
+    create_repo: bool = (
+        True  # set to False if the repo already exists but you just want to apply some other Pulumi to it
+    )
 
 
 class GithubRepo(ComponentResource):
     def __init__(self, *, config: GithubRepoConfig, provider: Provider | None = None):
         super().__init__("labauto:GithubRepo", append_resource_suffix(config.name), None)
-        repo = Repository(
-            append_resource_suffix(config.name),
-            name=config.name,
-            visibility=config.visibility,
-            description=config.description,
-            allow_merge_commit=config.allow_merge_commit,
-            allow_rebase_merge=config.allow_rebase_merge,
-            delete_branch_on_merge=config.delete_branch_on_merge,
-            has_issues=config.has_issues,
-            allow_auto_merge=config.allow_auto_merge,
-            squash_merge_commit_title=config.squash_merge_commit_title,
-            squash_merge_commit_message=config.squash_merge_commit_message,
-            auto_init=True,
-            topics=["managed-by-aws-central-infrastructure-iac-repo"],
-            opts=ResourceOptions(provider=provider, parent=self),
-        )
+        if config.create_repo:
+            repo = Repository(
+                append_resource_suffix(config.name),
+                name=config.name,
+                visibility=config.visibility,
+                description=config.description,
+                allow_merge_commit=config.allow_merge_commit,
+                allow_rebase_merge=config.allow_rebase_merge,
+                delete_branch_on_merge=config.delete_branch_on_merge,
+                has_issues=config.has_issues,
+                allow_auto_merge=config.allow_auto_merge,
+                squash_merge_commit_title=config.squash_merge_commit_title,
+                squash_merge_commit_message=config.squash_merge_commit_message,
+                auto_init=True,
+                topics=["managed-by-aws-central-infrastructure-iac-repo"],
+                opts=ResourceOptions(provider=provider, parent=self),
+            )
         bypass_actors: Sequence[RepositoryRulesetBypassActorArgs] | None = None
         if config.org_admin_rule_bypass:
             bypass_actors = [
                 RepositoryRulesetBypassActorArgs(
                     actor_type="OrganizationAdmin",
                     bypass_mode="pull_request",
-                    actor_id=1,  # Pulumi requires some value for actor_id, but it doesn't seem to be used when actor_type is set to Org Admin
+                    actor_id=0,  # Pulumi requires some value for actor_id, but it doesn't seem to be used when actor_type is set to Org Admin
                 )
             ]
+        ruleset_depends = [] if not config.create_repo else [repo]  # type: ignore[reportPossiblyUnboundVariable] # this is a false positive, due to the conditionals in this ternary and the logic above
         _ = RepositoryRuleset(
             append_resource_suffix(config.name),
             bypass_actors=bypass_actors,
             name="Protect Default Branch",
-            repository=repo.name,
+            repository=config.name,
             target="branch",
             enforcement="active",
             conditions=RepositoryRulesetConditionsArgs(
@@ -111,14 +123,15 @@ class GithubRepo(ComponentResource):
                     dismiss_stale_reviews_on_push=True,
                     require_last_push_approval=True,
                     required_approving_review_count=1,
+                    require_code_owner_review=config.require_code_owner_review,
                     # TODO: set the Allowed Merge Methods once that becomes available through Pulumi
                 ),
             ),
-            opts=ResourceOptions(provider=provider, parent=self, depends_on=[repo]),
+            opts=ResourceOptions(provider=provider, parent=self, depends_on=ruleset_depends),
         )
 
 
-def create_repos(*, configs: Iterable[GithubRepoConfig] | None = None, provider: Provider) -> None:
+def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Provider) -> None:
     # Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write
     # After the initial deployment which creates the secret, go in and use the Manual Secrets permission set to update the secret with the real token, then you can create repos
     _ = secretsmanager.Secret(
@@ -134,6 +147,15 @@ def create_repos(*, configs: Iterable[GithubRepoConfig] | None = None, provider:
         configs = []
     if not configs:
         return
-
+    configs.extend(
+        [
+            GithubRepoConfig(
+                name=CENTRAL_INFRA_REPO_NAME, create_repo=False, description="NA", org_admin_rule_bypass=True
+            ),
+            GithubRepoConfig(
+                name=AWS_ORGANIZATION_REPO_NAME, create_repo=False, description="NA", org_admin_rule_bypass=True
+            ),
+        ]
+    )
     for config in configs:
         _ = GithubRepo(config=config, provider=provider)
