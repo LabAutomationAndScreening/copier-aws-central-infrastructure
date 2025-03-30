@@ -119,6 +119,11 @@ manage_github_repos:
     help: Do you want to use this repository to manage some of the other GitHub repositories through Infrastructure as Code?
     default: no
 
+initial_github_admin:
+    type: str
+    help: What is your GitHub username (to be set as the initial admin of the root Team)?
+    when: "{{ manage_github_repos }}"
+
 create_private_subnet:
     type: bool
     help: Do you want to create a private subnet with a NAT Gateway within the central networking VPC (this will incur costs...around $30/month)?
