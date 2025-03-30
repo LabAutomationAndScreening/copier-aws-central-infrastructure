@@ -17,7 +17,8 @@ def pulumi_program() -> None:
     create_repo_configs(repo_configs)
     provider = create_github_provider()
     root_team = GithubTeamConfig(name="Everyone", description="Everyone in the organization, the root of all teams.")
+    dev_sec_ops_team_config = GithubTeamConfig(name="DevSecOps", description="DevSecOps Team", parent_team=root_team)
     team_configs: list[GithubTeamConfig] = []
     create_repos(configs=repo_configs, provider=provider)
-    org_members = define_team_configs(configs=team_configs)
+    org_members = define_team_configs(configs=team_configs, dev_sec_ops_team_config=dev_sec_ops_team_config)
     create_teams(configs=team_configs, provider=provider, org_members=org_members, root_team=root_team)

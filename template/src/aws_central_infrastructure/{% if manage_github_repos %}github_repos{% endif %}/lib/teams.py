@@ -1,4 +1,5 @@
 from typing import Literal
+from typing import Self
 
 from ephemeral_pulumi_deploy import append_resource_suffix
 from pulumi import ComponentResource
@@ -37,10 +38,17 @@ class GithubTeamConfig(BaseModel):
     maintainers: list[str] = Field(default_factory=list)
     members: list[str] = Field(default_factory=list)
     repo_permissions: dict[RepositoryName, GithubRepositoryPermission] = Field(default_factory=dict)
+    parent_team: Self | None = None
 
     @property
     def slug(self) -> str:
         return self.name.replace(" ", "-").lower()
+
+    @property
+    def parent_team_slug(self) -> str | None:
+        if self.parent_team is None:
+            return None
+        return self.parent_team.slug
 
     @property
     def member_args(self) -> list[TeamMembersMemberArgs]:
@@ -67,6 +75,7 @@ class GithubTeam(ComponentResource):
             name=config.name,
             description=config.description,
             privacy=config.privacy,
+            parent_team_id=config.parent_team_slug,
             opts=ResourceOptions(parent=self, provider=provider),
         )
         self.default_opts = ResourceOptions(parent=self, provider=provider, depends_on=[team])
@@ -111,4 +120,6 @@ def create_teams(
     # TODO: confirm all team slugs are unique
     # TODO: confirm there's no duplicate repos listed in the GithubTeamConfig repo permissions (prefer over dict so that there's no silent overriding of permissions)
     for config in configs:
+        if config.parent_team is None and config is not root_team:
+            config.parent_team = root_team
         _ = GithubTeam(config=config, provider=provider)
