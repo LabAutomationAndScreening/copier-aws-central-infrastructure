@@ -1,4 +1,5 @@
 from .constants import CENTRAL_INFRA_GITHUB_ORG_NAME
+from .constants import CENTRAL_INFRA_REPO_NAME
 from .github_oidc_lib import CODE_ARTIFACT_SERVICE_BEARER_STATEMENT
 from .github_oidc_lib import GITHUB_OIDC_URL
 from .github_oidc_lib import GithubOidcConfig
