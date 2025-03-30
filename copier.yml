@@ -124,6 +124,12 @@ initial_github_admin:
     help: What is your GitHub username (to be set as the initial admin of the root Team)?
     when: "{{ manage_github_repos }}"
 
+aws_organization_repo_name:
+    type: str
+    help: What is the name of the Github repository used to manage your AWS Organization?
+    when: "{{ manage_github_repos }}"
+    default: aws-organization
+
 create_private_subnet:
     type: bool
     help: Do you want to create a private subnet with a NAT Gateway within the central networking VPC (this will incur costs...around $30/month)?
