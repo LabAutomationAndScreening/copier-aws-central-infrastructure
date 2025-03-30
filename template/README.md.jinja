@@ -10,6 +10,7 @@
 ## Managing your company's GitHub Organization
 ### Repositories
 The file `src/aws_central_infrastructure/github_repos/repos.py` contains a list of repositories that are managed by this project. To add a new repository, add a new entry to the `configs` list.
+It's recommended to create a CODEOWNERS file within your repository to distinguish which Teams have the ability to approve Pull Requests---this allows many people to contribute via `write` access, but still gate with approvals.
 
 ### Teams
 The file `src/aws_central_infrastructure/github_repos/teams.py` contains a list of teams that are managed by this project. To add a new team, add a new entry to the `configs` list.
