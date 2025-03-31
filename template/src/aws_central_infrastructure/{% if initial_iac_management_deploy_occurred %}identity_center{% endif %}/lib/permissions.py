@@ -42,7 +42,7 @@ def lookup_user_id(username: Username) -> str:
             ),
             identity_store_id=ORG_INFO.identity_store_id,
         )
-    except Exception as e:
+    except Exception as e:  # the exception Pulumi throws is just Exception, it's not a more specific subclass
         if "ResourceNotFoundException: USER not found" in str(e):
             raise UserNotFoundInIdentityStoreError(username) from e
         raise
