@@ -1,6 +1,8 @@
 from uuid import uuid4
 
 import pytest
+
+# separate internal imports from external imports with this comment, because otherwise ruff in the copier template doesn't recognize them as internal and reformats them
 from aws_central_infrastructure.github_repos.lib import GithubOrgAdminAsTeamMemberError
 from aws_central_infrastructure.github_repos.lib import GithubOrgMembers
 from aws_central_infrastructure.github_repos.lib import GithubTeamConfig
