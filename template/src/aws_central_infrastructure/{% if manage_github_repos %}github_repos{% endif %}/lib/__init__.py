@@ -2,6 +2,8 @@ from .constants import ROOT_GITHUB_ADMIN_USERNAME
 from .repo import GithubRepo
 from .repo import GithubRepoConfig
 from .repo import create_repos
+from .teams import GithubOrgAdminAsTeamMemberError
 from .teams import GithubOrgMembers
 from .teams import GithubTeamConfig
 from .teams import RepositoryName
+from .teams import fully_configure_teams
