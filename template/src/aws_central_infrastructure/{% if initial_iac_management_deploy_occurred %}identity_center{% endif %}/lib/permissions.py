@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 from typing import Any
 from typing import override
@@ -21,19 +22,31 @@ from .lib import UserInfo
 from .lib import Username
 from .lib import create_read_state_inline_policy
 
+logger = logging.getLogger(__name__)
 _all_users: dict[Username, UserAttributes] = {}
+
+
+class UserNotFoundInIdentityStoreError(ValueError):
+    def __init__(self, username: Username):
+        super().__init__(f"User {username!r} not found in the Identity Store")
 
 
 def lookup_user_id(username: Username) -> str:
     """Convert a username name into an AWS SSO User ID."""
-    return identitystore_classic.get_user(
-        alternate_identifier=identitystore_classic.GetUserAlternateIdentifierArgs(
-            unique_attribute=identitystore_classic.GetUserAlternateIdentifierUniqueAttributeArgs(
-                attribute_path="UserName", attribute_value=username
-            )
-        ),
-        identity_store_id=ORG_INFO.identity_store_id,
-    ).user_id
+    try:
+        user_result = identitystore_classic.get_user(
+            alternate_identifier=identitystore_classic.GetUserAlternateIdentifierArgs(
+                unique_attribute=identitystore_classic.GetUserAlternateIdentifierUniqueAttributeArgs(
+                    attribute_path="UserName", attribute_value=username
+                )
+            ),
+            identity_store_id=ORG_INFO.identity_store_id,
+        )
+    except Exception as e:  # the exception Pulumi throws is just Exception, it's not a more specific subclass
+        if "ResourceNotFoundException: USER not found" in str(e):
+            raise UserNotFoundInIdentityStoreError(username) from e
+        raise
+    return user_result.user_id
 
 
 class AwsSsoPermissionSet(ComponentResource):
@@ -336,11 +349,18 @@ class AwsSsoPermissionSetAccountAssignments(ComponentResource):
         user_infos = _create_unique_userinfo_list(users)
 
         for user_info in user_infos:
+            try:
+                principal_id = lookup_user_id(user_info.username)
+            except UserNotFoundInIdentityStoreError as e:
+                logger.warning(
+                    f"Skipping user {user_info.username!r} for {resource_name} permission set assignment because {e}"
+                )
+                continue
             _ = ssoadmin.AccountAssignment(
                 f"{resource_name}-{user_info.username}",
                 instance_arn=ORG_INFO.sso_instance_arn,
                 permission_set_arn=permission_set.permission_set_arn,
-                principal_id=lookup_user_id(user_info.username),
+                principal_id=principal_id,
                 principal_type="USER",
                 target_id=account_info.id,
                 target_type="AWS_ACCOUNT",
