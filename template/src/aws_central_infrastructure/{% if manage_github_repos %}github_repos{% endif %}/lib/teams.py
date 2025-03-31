@@ -39,6 +39,7 @@ class GithubTeamConfig(BaseModel):
     members: list[str] = Field(default_factory=list)
     repo_permissions: dict[RepositoryName, GithubRepositoryPermission] = Field(default_factory=dict)
     parent_team: Self | None = None
+    auto_convert_org_admins_to_maintainers: bool = True  # github requires that org admins only be listed as maintainers, with this set to true, any members will automatically be converted to maintainers if they are org admins
 
     @property
     def slug(self) -> str:
@@ -100,14 +101,26 @@ class GithubTeam(ComponentResource):
             )
 
 
-def create_teams(
-    *,
-    configs: list[GithubTeamConfig],
-    provider: Provider,
-    org_members: GithubOrgMembers,
-    root_team: GithubTeamConfig,
+class GithubOrgAdminAsTeamMemberError(Exception):
+    def __init__(self, *, username: str, team_name: str):
+        super().__init__(
+            f"Org Admin {username} is listed as a member of team {team_name}. GitHub requires that Org Admins only be listed as Maintainers of teams."
+        )
+
+
+def fully_configure_teams(
+    *, configs: list[GithubTeamConfig], org_members: GithubOrgMembers, root_team: GithubTeamConfig
 ) -> None:
-    # Additional Token permissions needed beyond repo: Organization-Members Read/Write
+    for config in configs:
+        admins_to_convert: list[str] = []
+        for admin in org_members.org_admins:
+            if admin in config.members:
+                if not config.auto_convert_org_admins_to_maintainers:
+                    raise GithubOrgAdminAsTeamMemberError(username=admin, team_name=config.name)
+                admins_to_convert.append(admin)
+        config.maintainers.extend(admins_to_convert)
+        for admin in admins_to_convert:
+            config.members.remove(admin)
     configs.insert(0, root_team)
     root_team.maintainers.extend(org_members.org_admins)
     root_team.members.extend(org_members.everyone)
@@ -116,6 +129,17 @@ def create_teams(
         "aws-organization",  # TODO: parametrize this, don't hardcode the repo name
     ):
         root_team.repo_permissions[repo_name] = "push"
+
+
+def create_teams(
+    *,
+    configs: list[GithubTeamConfig],
+    provider: Provider,
+    org_members: GithubOrgMembers,
+    root_team: GithubTeamConfig,
+) -> None:
+    # Additional Token permissions needed beyond repo: Organization-Members Read/Write
+    fully_configure_teams(configs=configs, org_members=org_members, root_team=root_team)
 
     # TODO: confirm all team slugs are unique
     # TODO: confirm there's no duplicate repos listed in the GithubTeamConfig repo permissions (prefer over dict so that there's no silent overriding of permissions)

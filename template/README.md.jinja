@@ -20,6 +20,12 @@ If an explicit parent is not provided in the configuration, the team will have t
 
 You can grant a Team permissions for a repository even if that repository was not created using this process.
 
+### External Collaborators
+The file `src/aws_central_infrastructure/github_repos/collaborators.py` contains a list of external collaborators that are managed by this project. To add a new collaborator, add a new entry to the `configs` list.
+Ensure to assign them appropriate permissions (typically `push`...sometimes referred to as `write` in other contexts) for the repositories they needs access to.
+
+You can grant a Collaborator permissions for a repository even if that repository was not created using this process.
+
 ### Initial configuration for Github organization
 It's recommended to set the following permissions for the Organization to guide people towards doing more things via this repository instead of the Console.
 https://github.com/organizations/lab-sync/settings/member_privileges
