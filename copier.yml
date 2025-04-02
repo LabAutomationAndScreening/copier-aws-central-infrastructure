@@ -125,6 +125,18 @@ initial_github_admin:
     help: What is your GitHub username (to be set as the initial admin of the root Team)?
     when: "{{ manage_github_repos }}"
 
+import_github_aws_org_repos:
+    type: bool
+    help: Do you want to start the process of importing the AWS-Organization and AWS-Central-Infrastructure repositories to be managed by this project?
+    default: no
+    when: "{{ manage_github_repos }}"
+
+finished_importing_github_aws_org_repos:
+    type: bool
+    help: Did you complete a successful deployment to main of importing the AWS-Organization and AWS-Central-Infrastructure repositories yet?
+    default: no
+    when: "{{ import_github_aws_org_repos }}"
+
 aws_organization_repo_name:
     type: str
     help: What is the name of the Github repository used to manage your AWS Organization?
