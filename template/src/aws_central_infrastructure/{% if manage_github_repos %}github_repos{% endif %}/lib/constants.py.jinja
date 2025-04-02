@@ -1,2 +1,4 @@
 {% raw %}ROOT_GITHUB_ADMIN_USERNAME = "{% endraw %}{{ initial_github_admin }}{% raw %}"
-AWS_ORGANIZATION_REPO_NAME = "{% endraw %}{{ aws_organization_repo_name }}{% raw %}"{% endraw %}
+AWS_ORGANIZATION_REPO_NAME = "{% endraw %}{{ aws_organization_repo_name }}{% raw %}"
+ACTIVELY_IMPORT_AWS_ORG_REPOS = {% endraw %}{{ 'True' if import_github_aws_org_repos and not finished_importing_github_aws_org_repos else 'False' }}{% raw %}
+AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED = {% endraw %}{{ 'True' if finished_importing_github_aws_org_repos else 'False' }}{% raw %}{% endraw %}
