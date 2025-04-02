@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 from typing import Literal
+from typing import Self
 
 import boto3
 from ephemeral_pulumi_deploy import append_resource_suffix
@@ -23,25 +24,29 @@ from pydantic import BaseModel
 
 from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_REPO_NAME
 
+from .constants import ACTIVELY_IMPORT_AWS_ORG_REPOS
+from .constants import AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED
 from .constants import AWS_ORGANIZATION_REPO_NAME
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+SECRETS_PREFIX = "/manually-entered-secrets/iac"
+DEPLOY_SECRET_NAME = f"{SECRETS_PREFIX}/github-deploy-access-token"
+PREVIEW_SECRET_NAME = f"{SECRETS_PREFIX}/github-preview-access-token"
+# preview token permissions: all repositories, Administration:Read, Contents: Read, Environments: Read, OrgMembers: Read
 
 
 def create_github_provider() -> Provider:
-    token = "fake"  # noqa: S105 # this is not a real secret
-    if not is_dry_run():  # the Pulumi Preview process doesn't seem to actually invoke the Github API, so only grant the Deploy role the ability to get this secret and ignore it during Preview
-        # Trying to use pulumi_aws GetSecretVersionResult isn't working because it still returns an Output, and Provider requires a string. Even attempting to use apply
-        secrets_client = boto3.client("secretsmanager")
-        secrets_response = secrets_client.list_secrets(
-            Filters=[{"Key": "name", "Values": ["/manually-entered-secrets/iac/github-access-token"]}]
-        )
-        secrets = secrets_response["SecretList"]
-        assert len(secrets) == 1, f"expected only 1 matching secret, but found {len(secrets)}"
-        assert "ARN" in secrets[0], f"expected 'ARN' in secrets[0], but found {secrets[0].keys()}"
-        secret_id = secrets[0]["ARN"]
-        token = secrets_client.get_secret_value(SecretId=secret_id)["SecretString"]
+    # Trying to use pulumi_aws GetSecretVersionResult isn't working because it still returns an Output, and Provider requires a string. Even attempting to use apply
+    secrets_client = boto3.client("secretsmanager")
+    secrets_response = secrets_client.list_secrets(
+        Filters=[{"Key": "name", "Values": [PREVIEW_SECRET_NAME if is_dry_run() else DEPLOY_SECRET_NAME]}]
+    )
+    secrets = secrets_response["SecretList"]
+    assert len(secrets) == 1, f"expected only 1 matching secret, but found {len(secrets)}"
+    assert "ARN" in secrets[0], f"expected 'ARN' in secrets[0], but found {secrets[0].keys()}"
+    secret_id = secrets[0]["ARN"]
+    token = secrets_client.get_secret_value(SecretId=secret_id)["SecretString"]
 
     return Provider(  # TODO: figure out why this isn't getting automatically picked up from the config
         "default", token=token, owner=get_config_str("github:owner")
@@ -56,15 +61,19 @@ class GithubRepoConfig(BaseModel, frozen=True):
     allow_rebase_merge: bool = False
     delete_branch_on_merge: bool = True
     has_issues: bool = True
+    has_projects: bool = False
+    has_downloads: bool = False  # this should almost never be true (it's been deprecated), but it's here for help importing repos that somehow have it set to true
     allow_auto_merge: bool = True
     squash_merge_commit_title: str = "PR_TITLE"
     squash_merge_commit_message: str = "PR_BODY"
     require_branch_to_be_up_to_date_before_merge: bool = True
     org_admin_rule_bypass: bool = False
     require_code_owner_review: bool = True
+    allow_update_branch: bool = False
     create_repo: bool = (
         True  # set to False if the repo already exists but you just want to apply some other Pulumi to it
     )
+    import_existing_repo_using_config: Self | None = None
 
 
 class GithubRepo(ComponentResource):
@@ -74,18 +83,49 @@ class GithubRepo(ComponentResource):
             repo = Repository(
                 append_resource_suffix(config.name),
                 name=config.name,
-                visibility=config.visibility,
-                description=config.description,
-                allow_merge_commit=config.allow_merge_commit,
-                allow_rebase_merge=config.allow_rebase_merge,
-                delete_branch_on_merge=config.delete_branch_on_merge,
-                has_issues=config.has_issues,
-                allow_auto_merge=config.allow_auto_merge,
-                squash_merge_commit_title=config.squash_merge_commit_title,
-                squash_merge_commit_message=config.squash_merge_commit_message,
-                auto_init=True,
-                topics=["managed-by-aws-central-infrastructure-iac-repo"],
-                opts=ResourceOptions(provider=provider, parent=self),
+                visibility=config.visibility
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.visibility,
+                description=config.description if config.import_existing_repo_using_config is None else None,
+                allow_merge_commit=config.allow_merge_commit
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.allow_merge_commit,
+                allow_rebase_merge=config.allow_rebase_merge
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.allow_rebase_merge,
+                delete_branch_on_merge=config.delete_branch_on_merge
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.delete_branch_on_merge,
+                has_issues=config.has_issues
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.has_issues,
+                has_projects=config.has_projects
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.has_projects,
+                has_downloads=config.has_downloads
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.has_downloads,
+                allow_auto_merge=config.allow_auto_merge
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.allow_auto_merge,
+                squash_merge_commit_title=config.squash_merge_commit_title
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.squash_merge_commit_title,
+                squash_merge_commit_message=config.squash_merge_commit_message
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.squash_merge_commit_message,
+                auto_init=True if config.import_existing_repo_using_config is None else None,
+                allow_update_branch=config.allow_update_branch
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.allow_update_branch,
+                topics=["managed-by-aws-central-infrastructure-iac-repo"]
+                if config.import_existing_repo_using_config is None
+                else None,
+                opts=ResourceOptions(
+                    provider=provider,
+                    parent=self,
+                    import_=None if config.import_existing_repo_using_config is None else config.name,
+                ),
             )
         bypass_actors: Sequence[RepositoryRulesetBypassActorArgs] | None = None
         if config.org_admin_rule_bypass:
@@ -135,8 +175,16 @@ def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Pro
     # Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write
     # After the initial deployment which creates the secret, go in and use the Manual Secrets permission set to update the secret with the real token, then you can create repos
     _ = secretsmanager.Secret(
-        append_resource_suffix("github-access-token"),
-        name="/manually-entered-secrets/iac/github-access-token",
+        append_resource_suffix("github-deploy-access-token"),
+        name=DEPLOY_SECRET_NAME,
+        description="GitHub access token",
+        secret_string="will-need-to-be-manually-entered",  # noqa: S106 # this is not a real secret
+        tags=common_tags_native(),
+        opts=ResourceOptions(ignore_changes=["secret_string"]),
+    )
+    _ = secretsmanager.Secret(
+        append_resource_suffix("github-preview-access-token"),
+        name=PREVIEW_SECRET_NAME,
         description="GitHub access token",
         secret_string="will-need-to-be-manually-entered",  # noqa: S106 # this is not a real secret
         tags=common_tags_native(),
@@ -147,15 +195,39 @@ def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Pro
         configs = []
     if not configs:
         return
-    configs.extend(
-        [
+    if ACTIVELY_IMPORT_AWS_ORG_REPOS or AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED:
+        default_imported_repo_config = (  # these are the typical default github settings, so use these when importing a repo
             GithubRepoConfig(
-                name=CENTRAL_INFRA_REPO_NAME, create_repo=False, description="NA", org_admin_rule_bypass=True
-            ),
-            GithubRepoConfig(
-                name=AWS_ORGANIZATION_REPO_NAME, create_repo=False, description="NA", org_admin_rule_bypass=True
-            ),
-        ]
-    )
+                name="na",
+                description="na",
+                has_downloads=True,
+                has_projects=True,
+                allow_auto_merge=False,
+                allow_update_branch=False,
+                delete_branch_on_merge=False,
+                allow_merge_commit=True,
+                allow_rebase_merge=True,
+            )
+        )
+        configs.extend(
+            [
+                GithubRepoConfig(
+                    name=CENTRAL_INFRA_REPO_NAME,
+                    description="Manage Central/Core Infrastructure for the AWS Organization",
+                    org_admin_rule_bypass=True,
+                    import_existing_repo_using_config=None
+                    if AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED
+                    else default_imported_repo_config,
+                ),
+                GithubRepoConfig(
+                    name=AWS_ORGANIZATION_REPO_NAME,
+                    description="Managing the company's AWS Organization",
+                    org_admin_rule_bypass=True,
+                    import_existing_repo_using_config=None
+                    if AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED
+                    else default_imported_repo_config,
+                ),
+            ]
+        )
     for config in configs:
         _ = GithubRepo(config=config, provider=provider)
