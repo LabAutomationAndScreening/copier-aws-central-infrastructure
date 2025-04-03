@@ -1,11 +1,11 @@
+from lab_auto_pulumi import AwsLogicalWorkload
+from lab_auto_pulumi import AwsSsoPermissionSet
+from lab_auto_pulumi import AwsSsoPermissionSetAccountAssignments
+from lab_auto_pulumi import UserInfo
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import get_policy_document
 
-from .lib import UserInfo
-from .permissions import AwsLogicalWorkload
-from .permissions import AwsSsoPermissionSet
-from .permissions import AwsSsoPermissionSetAccountAssignments
 from .permissions import DefaultWorkloadPermissionAssignments
 
 
