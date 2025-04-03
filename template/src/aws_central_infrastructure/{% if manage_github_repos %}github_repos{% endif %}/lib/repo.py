@@ -6,6 +6,8 @@ import boto3
 from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import get_config_str
 from ephemeral_pulumi_deploy.utils import common_tags_native
+from lab_auto_pulumi import GITHUB_DEPLOY_TOKEN_SECRET_NAME
+from lab_auto_pulumi import GITHUB_PREVIEW_TOKEN_SECRET_NAME
 from pulumi import ComponentResource
 from pulumi import ResourceOptions
 from pulumi.runtime import is_dry_run
@@ -30,9 +32,7 @@ from .constants import AWS_ORGANIZATION_REPO_NAME
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-SECRETS_PREFIX = "/manually-entered-secrets/iac"
-DEPLOY_SECRET_NAME = f"{SECRETS_PREFIX}/github-deploy-access-token"
-PREVIEW_SECRET_NAME = f"{SECRETS_PREFIX}/github-preview-access-token"
+
 # preview token permissions: all repositories, Administration:Read, Contents: Read, Environments: Read, OrgMembers: Read
 
 
@@ -40,7 +40,12 @@ def create_github_provider() -> Provider:
     # Trying to use pulumi_aws GetSecretVersionResult isn't working because it still returns an Output, and Provider requires a string. Even attempting to use apply
     secrets_client = boto3.client("secretsmanager")
     secrets_response = secrets_client.list_secrets(
-        Filters=[{"Key": "name", "Values": [PREVIEW_SECRET_NAME if is_dry_run() else DEPLOY_SECRET_NAME]}]
+        Filters=[
+            {
+                "Key": "name",
+                "Values": [GITHUB_PREVIEW_TOKEN_SECRET_NAME if is_dry_run() else GITHUB_DEPLOY_TOKEN_SECRET_NAME],
+            }
+        ]
     )
     secrets = secrets_response["SecretList"]
     assert len(secrets) == 1, f"expected only 1 matching secret, but found {len(secrets)}"
@@ -176,7 +181,7 @@ def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Pro
     # After the initial deployment which creates the secret, go in and use the Manual Secrets permission set to update the secret with the real token, then you can create repos
     _ = secretsmanager.Secret(
         append_resource_suffix("github-deploy-access-token"),
-        name=DEPLOY_SECRET_NAME,
+        name=GITHUB_DEPLOY_TOKEN_SECRET_NAME,
         description="GitHub access token",
         secret_string="will-need-to-be-manually-entered",  # noqa: S106 # this is not a real secret
         tags=common_tags_native(),
@@ -184,7 +189,7 @@ def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Pro
     )
     _ = secretsmanager.Secret(
         append_resource_suffix("github-preview-access-token"),
-        name=PREVIEW_SECRET_NAME,
+        name=GITHUB_PREVIEW_TOKEN_SECRET_NAME,
         description="GitHub access token",
         secret_string="will-need-to-be-manually-entered",  # noqa: S106 # this is not a real secret
         tags=common_tags_native(),
