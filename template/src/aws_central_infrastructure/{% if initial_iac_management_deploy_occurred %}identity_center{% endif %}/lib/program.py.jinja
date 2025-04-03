@@ -3,6 +3,9 @@
 from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
 from lab_auto_pulumi import AwsLogicalWorkload
+from lab_auto_pulumi import AwsSsoPermissionSet
+from lab_auto_pulumi import AwsSsoPermissionSetAccountAssignments
+from lab_auto_pulumi import all_created_users
 from pulumi import export
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
@@ -13,10 +16,7 @@ from aws_central_infrastructure.iac_management.lib.workload_params import load_w
 {% endraw %}{% if configure_cloud_courier %}{% raw %}from ..cloud_courier_permissions import configure_cloud_courier_permissions
 {% endraw %}{% endif %}{% raw %}from ..permissions import create_permissions
 from ..users import create_users
-from .lib import all_created_users
 from .permissions import ALL_PERM_SET_CONTAINERS
-from .permissions import AwsSsoPermissionSet
-from .permissions import AwsSsoPermissionSetAccountAssignments
 
 logger = logging.getLogger(__name__)
 
