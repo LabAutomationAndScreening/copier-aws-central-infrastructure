@@ -226,6 +226,15 @@ EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aw
                 ],
                 resources=["*"],
             ),
+            GetPolicyDocumentStatementArgs(
+                sid="GlobalS3",
+                effect="Allow",
+                actions=[
+                    "s3:ListAllMyBuckets",
+                    "s3:GetBucketLocation",
+                ],
+                resources=["*"],
+            ),
         ]
     ).json,
 )
