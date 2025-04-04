@@ -6,6 +6,7 @@ import boto3
 from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import common_tags
 from ephemeral_pulumi_deploy import get_config_str
+from lab_auto_pulumi import CENTRAL_NETWORKING_SSM_PREFIX
 from lab_auto_pulumi import GENERIC_CENTRAL_PRIVATE_SUBNET_NAME
 from lab_auto_pulumi import GENERIC_CENTRAL_PUBLIC_SUBNET_NAME
 from lab_auto_pulumi import GENERIC_CENTRAL_VPC_NAME
@@ -25,7 +26,6 @@ from pulumi_aws_native import TagArgs
 from pydantic import BaseModel
 from pydantic import Field
 
-from aws_central_infrastructure.central_networking.lib import CENTRAL_NETWORKING_SSM_PREFIX
 from aws_central_infrastructure.central_networking.lib import CREATE_PRIVATE_SUBNET
 
 
