@@ -7,8 +7,7 @@ from pulumi import export
 from aws_central_infrastructure.iac_management.lib.workload_params import load_workload_info
 
 {% endraw %}{% if configure_cloud_courier %}{% raw %}from ..cloud_courier_permissions import configure_cloud_courier_permissions
-{% endraw %}{% endif %}{% raw %}from ..permissions import create_permissions
-from ..users import create_users
+{% endraw %}{% endif %}{% raw %}from ..users import create_users
 from .create_permissions import create_all_permissions
 from .permissions import ALL_PERM_SET_CONTAINERS
 
