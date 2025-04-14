@@ -17,6 +17,7 @@ from pulumi_aws_native import ssm
 
 from aws_central_infrastructure.iac_management.lib import create_providers
 from aws_central_infrastructure.iac_management.lib import load_workload_info
+from aws_central_infrastructure.iac_management.lib import principal_in_org_condition
 
 logger = logging.getLogger(__name__)
 
@@ -66,13 +67,7 @@ class ManualArtifactsBucket(ComponentResource):
                                 )
                             ],
                             resources=[f"arn:aws:s3:::{bucket_name}/*"],
-                            conditions=[
-                                GetPolicyDocumentStatementConditionArgs(
-                                    values=[org_id],
-                                    test="StringEquals",
-                                    variable="aws:PrincipalOrgID",
-                                ),
-                            ],
+                            conditions=[principal_in_org_condition(org_id)],
                         ),
                         GetPolicyDocumentStatementArgs(
                             effect="Allow",
@@ -84,13 +79,7 @@ class ManualArtifactsBucket(ComponentResource):
                                 )
                             ],
                             resources=[f"arn:aws:s3:::{bucket_name}"],
-                            conditions=[
-                                GetPolicyDocumentStatementConditionArgs(
-                                    values=[org_id],
-                                    test="StringEquals",
-                                    variable="aws:PrincipalOrgID",
-                                ),
-                            ],
+                            conditions=[principal_in_org_condition(org_id)],
                         ),
                     ]
                 ).json
@@ -134,11 +123,7 @@ class DistributorPackagesBucket(ComponentResource):
                                     test="StringLike",
                                     values=principal_arns,
                                 ),
-                                GetPolicyDocumentStatementConditionArgs(
-                                    variable="aws:PrincipalOrgID",
-                                    test="StringEquals",
-                                    values=[org_id],
-                                ),
+                                principal_in_org_condition(org_id),
                             ],
                             resources=[f"arn:aws:s3:::{bucket_name}/${{aws:PrincipalAccount}}/*"],
                         ),
@@ -158,11 +143,7 @@ class DistributorPackagesBucket(ComponentResource):
                                     test="StringLike",
                                     values=principal_arns,
                                 ),
-                                GetPolicyDocumentStatementConditionArgs(
-                                    variable="aws:PrincipalOrgID",
-                                    test="StringEquals",
-                                    values=[org_id],
-                                ),
+                                principal_in_org_condition(org_id),
                                 GetPolicyDocumentStatementConditionArgs(
                                     test="StringLike", variable="s3:prefix", values=["${aws:PrincipalAccount}/*"]
                                 ),

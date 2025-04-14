@@ -11,6 +11,8 @@ from pulumi_aws.iam import GetPolicyDocumentStatementArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import get_policy_document
 
+from aws_central_infrastructure.iac_management.lib import CODE_ARTIFACT_SERVICE_BEARER_STATEMENT
+from aws_central_infrastructure.iac_management.lib import PULL_FROM_CENTRAL_ECRS_STATEMENTS
 from aws_central_infrastructure.iac_management.lib.workload_params import load_workload_info
 
 {% endraw %}{% if configure_cloud_courier %}{% raw %}from ..cloud_courier_permissions import configure_cloud_courier_permissions
@@ -28,16 +30,8 @@ def create_all_permissions(workloads_dict: dict[str, AwsLogicalWorkload]):
         description="Base access everyone should have for the Central/Core Infrastructure Account",
         inline_policy=get_policy_document(
             statements=[
-                GetPolicyDocumentStatementArgs(
-                    effect="Allow",
-                    actions=["sts:GetServiceBearerToken"],
-                    resources=["*"],
-                    conditions=[
-                        GetPolicyDocumentStatementConditionArgs(
-                            test="StringEquals", variable="sts:AWSServiceName", values=["codeartifact.amazonaws.com"]
-                        )
-                    ],
-                ),
+                CODE_ARTIFACT_SERVICE_BEARER_STATEMENT,
+                *PULL_FROM_CENTRAL_ECRS_STATEMENTS,
             ]
         ).json,
     )
