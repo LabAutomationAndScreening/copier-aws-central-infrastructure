@@ -59,10 +59,7 @@ class Ecr(ComponentResource):
                         GetPolicyDocumentStatementArgs(
                             effect="Allow",
                             sid="CrossAccountRead",
-                            actions=[
-                                "ecr:BatchGetImage",
-                                "ecr:GetDownloadUrlForLayer",
-                            ],
+                            actions=["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:DescribeImages"],
                             principals=[
                                 GetPolicyDocumentStatementPrincipalArgs(
                                     type="*",

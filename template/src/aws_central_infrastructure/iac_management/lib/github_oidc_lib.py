@@ -49,6 +49,7 @@ ECR_PULL_STATEMENT = GetPolicyDocumentStatementArgs(
     actions=[
         "ecr:BatchGetImage",
         "ecr:GetDownloadUrlForLayer",
+        "ecr:DescribeImages",
     ],
     resources=["*"],
 )

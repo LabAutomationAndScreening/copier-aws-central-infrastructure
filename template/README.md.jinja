@@ -35,9 +35,12 @@ https://github.com/organizations/lab-sync/settings/member_privileges
 * Pages Creation: Neither
 * Allow members to create teams: No{% endraw %}{% endif %}{% raw %}
 
-## Allowing a git repository to publish a packgae to AWS CodeArtifact
+## Allowing a git repository to publish a package to AWS CodeArtifact
 The file `src/aws_central_infrastructure/artifact_stores/internal_packages.py` contains a list of repositories that are allowed to publish packages to the AWS CodeArtifact registry. To enable a new repository to do so, add a new entry to the `repo_package_claims` list. This ensures that only one git repo has permission to publish that package, and there's no conflicts of two repos overwriting each other's packages.
 At the moment, only Python packages are supported. See https://github.com/LabAutomationAndScreening/copier-aws-central-infrastructure/issues/22 and https://github.com/LabAutomationAndScreening/copier-aws-central-infrastructure/issues/21
+
+## Allowing a git repository to publish a docker image to AWS Elastic Container Registry
+The file `src/aws_central_infrastructure/artifact_stores/container_registries.py` contains a list of repositories that are allowed to publish images to an AWS ECR. To create a new ECR that a repository can publish to, add a new entry to the `container_registries` list. This ensures that only one git repo has permission to publish to that ECR, and there's no conflicts of two repos overwriting each other's images.
 
 
 # Development
