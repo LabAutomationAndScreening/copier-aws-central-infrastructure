@@ -190,6 +190,7 @@ EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aw
                     "arn:aws:ec2:*:*:instance/*",
                     "arn:aws:ssm:*:*:managed-instance/*",
                     "arn:aws:ssm:*:*:document/AWS-StartPortForwardingSession",
+                    "arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell",
                 ],
                 conditions=[
                     GetPolicyDocumentStatementConditionArgs(
@@ -225,6 +226,19 @@ EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aw
                     "ssm-guiconnect:StartConnection",
                 ],
                 resources=["*"],
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="TerminalConnect",
+                effect="Allow",
+                actions=[
+                    "ssmmessages:CreateControlChannel",
+                    "ssmmessages:CreateDataChannel",
+                    "ssmmessages:OpenControlChannel",
+                    "ssmmessages:OpenDataChannel",
+                ],
+                resources=[
+                    "*"
+                ],  # resources must be *.  TODO: figure out if there are relevant conditions that can lock it down
             ),
             GetPolicyDocumentStatementArgs(
                 sid="GlobalS3",
