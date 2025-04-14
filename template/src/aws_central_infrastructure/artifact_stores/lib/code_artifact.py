@@ -11,7 +11,6 @@ from pulumi import Output
 from pulumi import ResourceOptions
 from pulumi_aws.iam import GetPolicyDocumentResult
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
-from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import GetPolicyDocumentStatementPrincipalArgs
 from pulumi_aws.iam import get_open_id_connect_provider
 from pulumi_aws.iam import get_policy_document
@@ -25,7 +24,7 @@ from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_GITHUB_O
 from aws_central_infrastructure.iac_management.lib import CODE_ARTIFACT_SERVICE_BEARER_STATEMENT
 from aws_central_infrastructure.iac_management.lib import GITHUB_OIDC_URL
 from aws_central_infrastructure.iac_management.lib import GithubOidcConfig
-from aws_central_infrastructure.iac_management.lib import create_oidc_assume_role_policy
+from aws_central_infrastructure.iac_management.lib import principal_in_org_condition
 
 logger = logging.getLogger(__name__)
 
@@ -75,13 +74,7 @@ class CentralCodeArtifact(ComponentResource):
                             )
                         ],
                         resources=["*"],
-                        conditions=[
-                            GetPolicyDocumentStatementConditionArgs(
-                                values=[org_id],
-                                variable="aws:PrincipalOrgID",
-                                test="StringEquals",
-                            ),
-                        ],
+                        conditions=[principal_in_org_condition(org_id)],
                     ),
                 ]
             ).json
@@ -109,13 +102,7 @@ class CentralCodeArtifact(ComponentResource):
                                 )
                             ],
                             resources=["*"],
-                            conditions=[
-                                GetPolicyDocumentStatementConditionArgs(
-                                    test="StringEquals",
-                                    values=[org_id],
-                                    variable="aws:PrincipalOrgID",
-                                ),
-                            ],
+                            conditions=[principal_in_org_condition(org_id)],
                         ),
                     ]
                 ).json
@@ -198,48 +185,28 @@ class RepoPublishingRoles(ComponentResource):
         self._package_claims = package_claims
         self._code_artifact = code_artifact
 
-        self._create_role(
-            oidc_config=GithubOidcConfig(
-                aws_account_id=get_aws_account_id(),
-                repo_org=package_claims.repo_org,
-                repo_name=package_claims.repo_name,
-                role_name=f"GHA-CA-Staging-{package_claims.repo_name}",
-                role_policy=iam.RolePolicyArgs(
-                    policy_name="PublishPackagesToCodeArtifact",
-                    policy_document=self._create_role_policy_document().json,
-                ),
-            )
-        )
+        _ = GithubOidcConfig(
+            aws_account_id=get_aws_account_id(),
+            repo_org=package_claims.repo_org,
+            repo_name=package_claims.repo_name,
+            role_name=f"GHA-CA-Staging-{package_claims.repo_name}",
+            role_policy=iam.RolePolicyArgs(
+                policy_name="PublishPackagesToCodeArtifact",
+                policy_document=self._create_role_policy_document().json,
+            ),
+        ).create_role(provider_arn=self._central_infra_oidc_provider_arn, parent=self)
 
-        self._create_role(
-            oidc_config=GithubOidcConfig(
-                aws_account_id=get_aws_account_id(),
-                repo_org=package_claims.repo_org,
-                repo_name=package_claims.repo_name,
-                restrictions="refs/heads/main",  # TODO: consider creating a publishing environment within GitHub and using that
-                role_name=f"GHA-CA-Primary-{package_claims.repo_name}",
-                role_policy=iam.RolePolicyArgs(
-                    policy_name="PublishPackagesToCodeArtifact",
-                    policy_document=self._create_role_policy_document(for_primary=True).json,
-                ),
-            )
-        )
-
-    def _create_role(
-        self,
-        oidc_config: GithubOidcConfig,
-    ):
-        assert oidc_config.role_policy is not None
-        _ = iam.Role(
-            f"github-oidc--{oidc_config.role_name}",
-            role_name=oidc_config.role_name,
-            assume_role_policy_document=create_oidc_assume_role_policy(
-                oidc_config=oidc_config, provider_arn=self._central_infra_oidc_provider_arn
-            ).json,
-            policies=[oidc_config.role_policy],
-            tags=common_tags_native(),
-            opts=ResourceOptions(parent=self),
-        )
+        _ = GithubOidcConfig(
+            aws_account_id=get_aws_account_id(),
+            repo_org=package_claims.repo_org,
+            repo_name=package_claims.repo_name,
+            restrictions="refs/heads/main",  # TODO: consider creating a publishing environment within GitHub and using that
+            role_name=f"GHA-CA-Primary-{package_claims.repo_name}",
+            role_policy=iam.RolePolicyArgs(
+                policy_name="PublishPackagesToCodeArtifact",
+                policy_document=self._create_role_policy_document(for_primary=True).json,
+            ),
+        ).create_role(provider_arn=self._central_infra_oidc_provider_arn, parent=self)
 
     def _create_role_policy_document(self, *, for_primary: bool = False) -> Output[GetPolicyDocumentResult]:
         ca_repo = self._code_artifact.primary_repo if for_primary else self._code_artifact.staging_repo

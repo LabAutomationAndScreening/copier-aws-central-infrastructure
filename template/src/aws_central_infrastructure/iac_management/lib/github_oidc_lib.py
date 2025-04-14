@@ -7,6 +7,7 @@ from lab_auto_pulumi import AwsAccountId
 from lab_auto_pulumi import AwsLogicalWorkload
 from pulumi import ComponentResource
 from pulumi import Output
+from pulumi import Resource
 from pulumi import ResourceOptions
 from pulumi_aws.iam import AwaitableGetPolicyDocumentResult
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
@@ -34,6 +35,32 @@ CODE_ARTIFACT_SERVICE_BEARER_STATEMENT = GetPolicyDocumentStatementArgs(
         )
     ],
 )
+ECR_AUTH_STATEMENT = GetPolicyDocumentStatementArgs(
+    effect="Allow",
+    sid="EcrAuth",
+    actions=[
+        "ecr:GetAuthorizationToken",
+    ],
+    resources=["*"],
+)
+ECR_PULL_STATEMENT = GetPolicyDocumentStatementArgs(
+    sid="EcrPull",
+    effect="Allow",
+    actions=[
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer",
+    ],
+    resources=["*"],
+)
+PULL_FROM_CENTRAL_ECRS_STATEMENTS = [ECR_AUTH_STATEMENT, ECR_PULL_STATEMENT]
+
+
+def principal_in_org_condition(org_id: str) -> GetPolicyDocumentStatementConditionArgs:
+    return GetPolicyDocumentStatementConditionArgs(
+        values=[org_id],
+        variable="aws:PrincipalOrgID",
+        test="StringEquals",
+    )
 
 
 class CommonOidcConfigKwargs(TypedDict):
@@ -56,6 +83,21 @@ class GithubOidcConfig(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    def create_role(self, *, provider_arn: str, parent: Resource | None = None) -> iam.Role:
+        role_policies: list[iam.RolePolicyArgs] = []
+        if self.role_policy is not None:
+            role_policies.append(self.role_policy)
+        return iam.Role(
+            f"{self.role_resource_name_prefix}{self.role_name}",
+            role_name=self.role_name,
+            assume_role_policy_document=create_oidc_assume_role_policy(
+                oidc_config=self, provider_arn=provider_arn
+            ).json,
+            policies=role_policies,
+            tags=common_tags_native(),
+            opts=ResourceOptions(parent=parent),
+        )
+
 
 def create_oidc_assume_role_policy(
     *, oidc_config: GithubOidcConfig, provider_arn: str
@@ -68,7 +110,9 @@ def create_oidc_assume_role_policy(
                 actions=["sts:AssumeRoleWithWebIdentity"],
                 conditions=[
                     GetPolicyDocumentStatementConditionArgs(
-                        test="StringLike" if oidc_config.restrictions is None else "StringEquals",
+                        test="StringLike"
+                        if oidc_config.restrictions is None or oidc_config.restrictions == "*"
+                        else "StringEquals",
                         variable="token.actions.githubusercontent.com:sub",
                         values=[
                             f"repo:{oidc_config.repo_org}/{oidc_config.repo_name}:{'*' if oidc_config.restrictions is None else oidc_config.restrictions}"

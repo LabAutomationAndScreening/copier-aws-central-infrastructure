@@ -10,6 +10,7 @@ from .constants import CENTRAL_INFRA_REPO_NAME
 from .constants import CLOUD_COURIER_INFRA_REPO_NAME
 from .constants import CONFIGURE_CLOUD_COURIER
 from .github_oidc_lib import CODE_ARTIFACT_SERVICE_BEARER_STATEMENT
+from .github_oidc_lib import PULL_FROM_CENTRAL_ECRS_STATEMENTS
 from .github_oidc_lib import GithubOidcConfig
 from .github_oidc_lib import create_oidc_for_single_account_workload
 from .github_oidc_lib import create_oidc_for_standard_workload
@@ -53,10 +54,11 @@ def generate_all_oidc(
             repo_org=CENTRAL_INFRA_GITHUB_ORG_NAME,
             repo_name="*",
             role_policy=iam.RolePolicyArgs(
-                policy_name="ReadFromCodeArtifact",
+                policy_name="ReadFromCentralArtifactStores",
                 policy_document=get_policy_document(
-                    statements=[  # TODO: DRY this up with the policy for the SSO Permission Set
-                        CODE_ARTIFACT_SERVICE_BEARER_STATEMENT
+                    statements=[
+                        CODE_ARTIFACT_SERVICE_BEARER_STATEMENT,
+                        *PULL_FROM_CENTRAL_ECRS_STATEMENTS,
                     ]
                 ).json,
             ),
