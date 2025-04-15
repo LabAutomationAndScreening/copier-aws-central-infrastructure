@@ -69,8 +69,8 @@ jobs:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
       PYTHON_VERSION: {% endraw %}{{ python_version }}{% raw %}
-      DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure
-      DEPLOY_SCRIPT_NAME: deploy_iac_management
+      DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure.iac_management.lib
+      DEPLOY_SCRIPT_NAME: pulumi_deploy
       PULUMI_PREVIEW: true
       PREVIEW_ROLE_NAME: InfraPreview--{% endraw %}{{ repo_name }}{% raw %}
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
@@ -84,8 +84,8 @@ jobs:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
       PYTHON_VERSION: {% endraw %}{{ python_version }}{% raw %}
-      DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure
-      DEPLOY_SCRIPT_NAME: deploy_github_repos
+      DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure.github_repos.lib
+      DEPLOY_SCRIPT_NAME: pulumi_deploy
       PULUMI_PREVIEW: true
       PREVIEW_ROLE_NAME: InfraPreview--{% endraw %}{{ repo_name }}{% raw %}
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
@@ -99,8 +99,8 @@ jobs:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
       PYTHON_VERSION: {% endraw %}{{ python_version }}{% raw %}
-      DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure
-      DEPLOY_SCRIPT_NAME: deploy_central_networking
+      DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure.central_networking.lib
+      DEPLOY_SCRIPT_NAME: pulumi_deploy
       PULUMI_PREVIEW: true
       PREVIEW_ROLE_NAME: InfraPreview--{% endraw %}{{ repo_name }}{% raw %}
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
@@ -114,8 +114,8 @@ jobs:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
       PYTHON_VERSION: {% endraw %}{{ python_version }}{% raw %}
-      DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure
-      DEPLOY_SCRIPT_NAME: deploy_artifact_stores
+      DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure.artifact_stores.lib
+      DEPLOY_SCRIPT_NAME: pulumi_deploy
       PULUMI_PREVIEW: true
       PREVIEW_ROLE_NAME: InfraPreview--{% endraw %}{{ repo_name }}{% raw %}
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
@@ -130,8 +130,8 @@ jobs:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
       PYTHON_VERSION: {% endraw %}{{ python_version }}{% raw %}
-      DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure
-      DEPLOY_SCRIPT_NAME: deploy_identity_center
+      DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure.identity_center.lib
+      DEPLOY_SCRIPT_NAME: pulumi_deploy
       PULUMI_PREVIEW: true
       PREVIEW_ROLE_NAME: InfraPreview--{% endraw %}{{ repo_name }}{% raw %}--identity-center
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}

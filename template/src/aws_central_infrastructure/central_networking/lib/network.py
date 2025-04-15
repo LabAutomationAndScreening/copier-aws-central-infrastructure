@@ -220,7 +220,7 @@ class SharedSubnet(ComponentResource):
         )
         if config.route_to_internet_gateway:
             _ = ec2.Route(
-                append_resource_suffix(f"{config.name}-to-igw"),
+                append_resource_suffix(f"{config.name}-to-igw", max_length=150),
                 route_table_id=route_table.id,
                 destination_cidr_block="0.0.0.0/0",
                 gateway_id=config.vpc.igw.id,
@@ -228,7 +228,7 @@ class SharedSubnet(ComponentResource):
             )
         if config.route_to_nat_gateway is not None:
             _ = ec2.Route(
-                append_resource_suffix(f"{config.name}-to-nat"),
+                append_resource_suffix(f"{config.name}-to-nat", max_length=150),
                 route_table_id=route_table.id,
                 destination_cidr_block="0.0.0.0/0",
                 gateway_id=config.route_to_nat_gateway.id,

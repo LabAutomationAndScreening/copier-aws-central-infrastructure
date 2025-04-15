@@ -4,7 +4,7 @@ from typing import Any
 from ephemeral_pulumi_deploy import run_cli
 from pulumi.automation import ConfigValue
 
-from .github_repos.lib.program import pulumi_program
+from .program import pulumi_program
 
 logger = logging.getLogger(__name__)
 
@@ -13,14 +13,12 @@ logger = logging.getLogger(__name__)
 def generate_stack_config() -> dict[str, Any]:
     """Generate the stack configuration."""
     stack_config: dict[str, Any] = {}
-    stack_config["proj:pulumi_project_name"] = "github-repos"
+    stack_config["proj:pulumi_project_name"] = "central-networking"
     stack_config["proj:aws_org_home_region"] = ConfigValue(value="{% endraw %}{{ aws_org_home_region }}{% raw %}")
     github_repo_name = "{% endraw %}{{ repo_name }}{% raw %}"
     stack_config["proj:github_repo_name"] = github_repo_name
 
-    stack_config["proj:git_repository_url"] = ConfigValue(value=f"https://github.com/{% endraw %}{{ repo_org_name }}{% raw %}/{github_repo_name}")
-
-    stack_config["github:owner"] = ConfigValue(value="{% endraw %}{{ repo_org_name }}{% raw %}")
+    stack_config["proj:git_repository_url"] = ConfigValue(value=f"https://github.com/{% endraw %}{{ central_infra_github_organization_name }}{% raw %}/{github_repo_name}")
     return stack_config
 
 
