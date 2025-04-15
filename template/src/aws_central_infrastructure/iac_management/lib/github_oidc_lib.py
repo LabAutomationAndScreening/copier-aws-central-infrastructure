@@ -228,7 +228,6 @@ def create_oidc_for_standard_workload(
         configs.append(
             GithubOidcConfig(
                 aws_account_id=prod_account.id,
-                restrictions="ref:refs/heads/main",
                 **deploy_kwargs,
             )
         )
