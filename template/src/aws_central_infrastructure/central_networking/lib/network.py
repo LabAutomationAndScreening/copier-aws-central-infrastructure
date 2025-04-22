@@ -108,8 +108,8 @@ class CentralNetworkingVpc(ComponentResource):
             None,
         )
         all_vpcs[name] = self
-        self.tag_name = f"{name}-central-vpc"
-        self.vpc_tags = [TagArgs(key="Name", value=self.tag_name), *common_tags_native()]
+        self.resource_name_base = f"{name}-vpc"
+        self.vpc_tags = [TagArgs(key="Name", value=f"central-networking-{name}"), *common_tags_native()]
         self.vpc = ec2.Vpc(
             append_resource_suffix(name),
             cidr_block="10.0.0.0/16",
@@ -125,10 +125,17 @@ class CentralNetworkingVpc(ComponentResource):
             param_name=f"{CENTRAL_NETWORKING_SSM_PREFIX}/vpcs/{name}/id",
             include_this_account=True,
         )
-        self.igw = ec2.InternetGateway(append_resource_suffix(name), tags=common_tags_native())
+        self.igw = ec2.InternetGateway(
+            append_resource_suffix(self.resource_name_base),
+            tags=common_tags_native(),
+            opts=ResourceOptions(parent=self),
+        )
         # AWS Native provider doesn't yet support InternetGatewayAttachment, so using classic provider https://github.com/pulumi/pulumi-aws-native/issues/782
         _ = pulumi_aws.ec2.InternetGatewayAttachment(
-            append_resource_suffix(name), vpc_id=self.vpc.id, internet_gateway_id=self.igw.id
+            append_resource_suffix(self.resource_name_base),
+            vpc_id=self.vpc.id,
+            internet_gateway_id=self.igw.id,
+            opts=ResourceOptions(parent=self.vpc),
         )
 
 
@@ -165,9 +172,10 @@ class SharedSubnet(ComponentResource):
         )
 
         all_subnets[config.name] = self
-        subnet_tags = [TagArgs(key="Name", value=config.name), *common_tags_native()]
+        self.resource_base_name = f"central-{config.name}"
+        subnet_tags = [TagArgs(key="Name", value=f"central-networking-{config.name}"), *common_tags_native()]
         subnet = ec2.Subnet(
-            append_resource_suffix(config.name),
+            append_resource_suffix(self.resource_base_name, max_length=75),
             vpc_id=config.vpc.vpc.id,
             availability_zone_id=config.availability_zone_id,
             cidr_block=config.cidr_block,
@@ -177,7 +185,7 @@ class SharedSubnet(ComponentResource):
         )
         principals = [org_arn if value == "all" else value for value in config.accounts_to_share_to]
         self.subnet_share = ram.ResourceShare(
-            append_resource_suffix(config.name),
+            append_resource_suffix(self.resource_base_name, max_length=150),
             resource_arns=[
                 subnet.subnet_id.apply(
                     lambda subnet_id: f"arn:aws:ec2:{pulumi_aws.config.region}:{get_aws_account_id()}:subnet/{subnet_id}"
@@ -191,14 +199,14 @@ class SharedSubnet(ComponentResource):
         tag_shared_resource(
             providers=all_providers.all_classic_providers,
             tags=subnet_tags,
-            resource_name=f"{config.name}-subnet",
+            resource_name=f"{self.resource_base_name}-subnet",
             resource_id=subnet.subnet_id,
             parent=self.subnet_share,
             accounts_to_share_to=config.accounts_to_share_to,
         )
-        route_table_tags = [TagArgs(key="Name", value=config.name), *common_tags_native()]
+        route_table_tags = [TagArgs(key="Name", value=self.resource_base_name), *common_tags_native()]
         route_table = ec2.RouteTable(
-            append_resource_suffix(config.name),
+            append_resource_suffix(self.resource_base_name, max_length=75),
             vpc_id=config.vpc.vpc.id,
             tags=route_table_tags,
             opts=ResourceOptions(parent=self),
@@ -206,21 +214,21 @@ class SharedSubnet(ComponentResource):
         tag_shared_resource(
             providers=all_providers.all_classic_providers,
             tags=route_table_tags,
-            resource_name=f"{config.name}-route-table",
+            resource_name=f"{self.resource_base_name}-route-table",
             resource_id=route_table.id,
             parent=self.subnet_share,
             accounts_to_share_to=config.accounts_to_share_to,
         )
 
         _ = ec2.SubnetRouteTableAssociation(
-            append_resource_suffix(config.name),
+            append_resource_suffix(self.resource_base_name, max_length=150),
             subnet_id=subnet.id,
             route_table_id=route_table.id,
             opts=ResourceOptions(parent=route_table),
         )
         if config.route_to_internet_gateway:
             _ = ec2.Route(
-                append_resource_suffix(f"{config.name}-to-igw", max_length=150),
+                append_resource_suffix(f"{self.resource_base_name}-to-igw", max_length=150),
                 route_table_id=route_table.id,
                 destination_cidr_block="0.0.0.0/0",
                 gateway_id=config.vpc.igw.id,
@@ -228,7 +236,7 @@ class SharedSubnet(ComponentResource):
             )
         if config.route_to_nat_gateway is not None:
             _ = ec2.Route(
-                append_resource_suffix(f"{config.name}-to-nat", max_length=150),
+                append_resource_suffix(f"{self.resource_base_name}-to-nat", max_length=150),
                 route_table_id=route_table.id,
                 destination_cidr_block="0.0.0.0/0",
                 gateway_id=config.route_to_nat_gateway.id,
@@ -236,13 +244,13 @@ class SharedSubnet(ComponentResource):
             )
         if config.create_nat:
             nat_eip = ec2.Eip(
-                append_resource_suffix(f"{config.name}-nat"),
+                append_resource_suffix(f"{self.resource_base_name}-nat", max_length=150),
                 domain="vpc",
                 tags=common_tags_native(),
                 opts=ResourceOptions(parent=self, depends_on=[config.vpc.igw]),
             )
             self.nat_gateway = ec2.NatGateway(
-                append_resource_suffix(config.name),
+                append_resource_suffix(self.resource_base_name, max_length=75),
                 allocation_id=nat_eip.allocation_id,
                 subnet_id=subnet.id,
                 tags=common_tags_native(),
