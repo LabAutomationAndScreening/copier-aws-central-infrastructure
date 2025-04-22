@@ -92,6 +92,7 @@ class Ec2ImageBuilder(ComponentResource):
                 </powershell>"""
             )
         )
+        source_instance_id: str | Output[str] = "fake-because-the-instance-is-actually-deleted-now"
         if not config.tear_down_builder:
             ec2_builder = Ec2WithRdp(
                 name=resource_name,
@@ -107,6 +108,7 @@ class Ec2ImageBuilder(ComponentResource):
                     )
                 ],
             )
+            source_instance_id = ec2_builder.instance.id
             _ = RolePolicy(
                 append_resource_suffix(f"{resource_name}-s3-read", max_length=99),
                 role=ec2_builder.instance_role.role_name,  # type: ignore[reportArgumentType] # pyright somehow thinks that a role_name can be None...which cannot happen
@@ -131,9 +133,7 @@ class Ec2ImageBuilder(ComponentResource):
                 append_resource_suffix(f"{config.builder_resource_name}-ami"),
                 description=config.new_image_config.description,
                 name=config.new_image_config.name,
-                source_instance_id="fake-because-the-instance-is-actually-deleted-now"
-                if config.tear_down_builder
-                else ec2_builder.instance.id,  # type: ignore[reportPossiblyUnboundVariable] # this is false positive due to the matching of the conditionals here and above
+                source_instance_id=source_instance_id,
                 tags={"Name": config.new_image_config.name, **common_tags()},
                 opts=ResourceOptions(parent=self, ignore_changes=["source_instance_id"]),
             )

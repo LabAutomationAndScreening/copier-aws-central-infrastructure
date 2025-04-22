@@ -1,8 +1,13 @@
 import logging
 
+import pulumi_aws
+from ephemeral_pulumi_deploy import append_resource_suffix
 from lab_auto_pulumi import GENERIC_CENTRAL_PRIVATE_SUBNET_NAME
 from lab_auto_pulumi import GENERIC_CENTRAL_PUBLIC_SUBNET_NAME
 from lab_auto_pulumi import GENERIC_CENTRAL_VPC_NAME
+from lab_auto_pulumi import AwsAccountInfo
+from pulumi import ResourceOptions
+from pulumi_aws.ec2 import InstanceMetadataDefaults
 from pulumi_aws.organizations import get_organization
 
 from aws_central_infrastructure.iac_management.lib import load_workload_info
@@ -48,7 +53,7 @@ def pulumi_program() -> None:
     tag_shared_resource(
         providers=all_providers.all_classic_providers,
         tags=generic_vpc.vpc_tags,
-        resource_name=generic_vpc.tag_name,
+        resource_name=f"{generic_vpc.resource_name_base}-vpc",
         resource_id=generic_vpc.vpc.vpc_id,
         parent=generic_vpc,
         depends_on=[
@@ -75,3 +80,27 @@ def pulumi_program() -> None:
         _ = SharedSubnet(
             config=subnet_config, org_arn=org_info.arn, all_providers=all_providers, all_subnets=all_subnets
         )
+
+    # set EC2 instance metadata defaults
+    region = pulumi_aws.config.region
+    _ = InstanceMetadataDefaults(
+        append_resource_suffix(f"central-infra-{region}"),
+        http_tokens="required",  # enforce imdsv2
+        http_put_response_hop_limit=1,
+    )
+    for workload_info in workloads_info.values():
+        workload_name = workload_info.name
+        all_accounts: list[AwsAccountInfo] = []
+
+        all_accounts.extend(
+            [*workload_info.prod_accounts, *workload_info.staging_accounts, *workload_info.dev_accounts]
+        )
+        for account in all_accounts:
+            _ = InstanceMetadataDefaults(
+                append_resource_suffix(f"{workload_name}-{account.name}-{region}", max_length=150),
+                http_tokens="required",  # enforce imdsv2
+                http_put_response_hop_limit=1,  # enforce imdsv2
+                opts=ResourceOptions(
+                    provider=all_providers.all_classic_providers[account.id], delete_before_replace=True
+                ),
+            )
