@@ -61,5 +61,5 @@
   "initializeCommand": "sh .devcontainer/initialize-command.sh",
   "onCreateCommand": "sh .devcontainer/on-create-command.sh",
   "postStartCommand": "sh .devcontainer/post-start-command.sh"
-  // Devcontainer context hash (do not manually edit this): 66733201
+  // Devcontainer context hash (do not manually edit this): 47c864d4
 }
