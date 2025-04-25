@@ -3,6 +3,7 @@ from collections.abc import Callable
 from typing import Any
 from typing import override
 
+from ephemeral_pulumi_deploy import get_config_str
 from lab_auto_pulumi import AwsLogicalWorkload
 from lab_auto_pulumi import AwsSsoPermissionSet
 from lab_auto_pulumi import AwsSsoPermissionSetAccountAssignments
@@ -26,18 +27,21 @@ class AwsSsoPermissionSetContainer(BaseModel):
         max_length=10,  # AWS default limit
     )
     inline_policy_callable: Callable[[], str] | None = None
-    relay_state: str | None = None
+    relay_state: Callable[[], str] | str | None = None
     _permission_set: AwsSsoPermissionSet | None = None
 
     def create_permission_set(self, inline_policy: str | None = None) -> AwsSsoPermissionSet:
         if inline_policy is None and self.inline_policy_callable is not None:
             inline_policy = self.inline_policy_callable()  # TODO: unit test this
+        relay_state = self.relay_state
+        if callable(relay_state):
+            relay_state = relay_state()
         self._permission_set = AwsSsoPermissionSet(
             name=self.name,
             description=self.description,
             managed_policies=self.managed_policies,
             inline_policy=inline_policy,
-            relay_state=self.relay_state,
+            relay_state=relay_state,
         )
         return self._permission_set
 
@@ -109,8 +113,7 @@ VIEW_ONLY_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
 EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aws.amazon.com/blogs/security/how-to-enable-secure-seamless-single-sign-on-to-amazon-ec2-windows-instances-with-aws-sso/
     name="SsoIntoEc2",
     description="The ability to SSO Login into EC2 instances via Systems Manager",
-    # TODO: don't hardcode us-east-1
-    relay_state="https://us-east-1.console.aws.amazon.com/ec2/home?#Instances:v=3;$case=tags:true%5C,client:false;$regex=tags:false%5C,client:false",
+    relay_state=lambda: f"https://{get_config_str('proj:aws_org_home_region')}.console.aws.amazon.com/ec2/home?#Instances:v=3;$case=tags:true%5C,client:false;$regex=tags:false%5C,client:false",
     inline_policy_callable=lambda: get_policy_document(
         statements=[
             GetPolicyDocumentStatementArgs(
@@ -159,6 +162,16 @@ EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aw
                     "ssm:DescribeInstanceInformation",
                 ],
                 resources=["*"],
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="SSMMiscConsolePerms",
+                effect="Allow",
+                actions=[
+                    "ssm:GetConnectionStatus",
+                ],
+                resources=[
+                    "*"
+                ],  # TODO: lock this down to the intended instances via a tag...maybe...maybe it doesn't matter it's just a read attribute
             ),
             GetPolicyDocumentStatementArgs(
                 sid="TerminateSession",
