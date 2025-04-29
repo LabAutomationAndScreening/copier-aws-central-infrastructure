@@ -59,6 +59,5 @@
   "initializeCommand": "sh .devcontainer/initialize-command.sh",
   "onCreateCommand": "sh .devcontainer/on-create-command.sh",
   "postStartCommand": "sh .devcontainer/post-start-command.sh"
-  // Devcontainer context hash (do not manually edit this): 47c864d4
   // Devcontainer context hash (do not manually edit this, it's managed by a pre-commit hook): d00a54be
 }
