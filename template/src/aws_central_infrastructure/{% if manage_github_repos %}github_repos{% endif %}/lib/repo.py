@@ -73,6 +73,7 @@ class GithubRepoConfig(BaseModel, frozen=True):
     squash_merge_commit_message: str = "PR_BODY"
     require_branch_to_be_up_to_date_before_merge: bool = True
     org_admin_rule_bypass: bool = False
+    repo_write_role_rule_bypass: bool = False
     require_code_owner_review: bool = True
     allow_update_branch: bool = False
     create_repo: bool = (
@@ -132,19 +133,29 @@ class GithubRepo(ComponentResource):
                     import_=None if config.import_existing_repo_using_config is None else config.name,
                 ),
             )
-        bypass_actors: Sequence[RepositoryRulesetBypassActorArgs] | None = None
+        bypass_actors: Sequence[RepositoryRulesetBypassActorArgs] = []
         if config.org_admin_rule_bypass:
-            bypass_actors = [
+            bypass_actors.append(
                 RepositoryRulesetBypassActorArgs(
                     actor_type="OrganizationAdmin",
                     bypass_mode="pull_request",
                     actor_id=0,  # Pulumi requires some value for actor_id, but it doesn't seem to be used when actor_type is set to Org Admin
                 )
-            ]
+            )
+        if config.repo_write_role_rule_bypass:
+            bypass_actors.append(
+                RepositoryRulesetBypassActorArgs(
+                    actor_type="RepositoryRole",
+                    bypass_mode="pull_request",
+                    actor_id=4,  # the ID for the Write Repository Role
+                )
+            )
         ruleset_depends = [] if not config.create_repo else [repo]  # type: ignore[reportPossiblyUnboundVariable] # this is a false positive, due to the conditionals in this ternary and the logic above
         _ = RepositoryRuleset(
             append_resource_suffix(config.name),
-            bypass_actors=bypass_actors,
+            bypass_actors=bypass_actors
+            if bypass_actors
+            else None,  # supplying an empty list seems to cause problems, so explicitly pass None if no bypass
             name="Protect Default Branch",
             repository=config.name,
             target="branch",
