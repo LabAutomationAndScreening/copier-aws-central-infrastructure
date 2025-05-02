@@ -14,6 +14,9 @@ from pulumi.runtime import is_dry_run
 from pulumi_aws_native import secretsmanager
 from pulumi_github import Provider
 from pulumi_github import Repository
+from pulumi_github import RepositoryEnvironment
+from pulumi_github import RepositoryEnvironmentDeploymentBranchPolicyArgs
+from pulumi_github import RepositoryEnvironmentDeploymentPolicy
 from pulumi_github import RepositoryRuleset
 from pulumi_github import RepositoryRulesetBypassActorArgs
 from pulumi_github import RepositoryRulesetConditionsArgs
@@ -24,6 +27,7 @@ from pulumi_github import RepositoryRulesetRulesRequiredStatusChecksArgs
 from pulumi_github import RepositoryRulesetRulesRequiredStatusChecksRequiredCheckArgs
 from pydantic import BaseModel
 
+from aws_central_infrastructure.artifact_stores.internal_packages import create_internal_packages_configs
 from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_REPO_NAME
 
 from .constants import ACTIVELY_IMPORT_AWS_ORG_REPOS
@@ -33,7 +37,10 @@ from .constants import AWS_ORGANIZATION_REPO_NAME
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from aws_central_infrastructure.artifact_stores.lib import RepoPackageClaims
+
 # preview token permissions: all repositories, Administration:Read, Contents: Read, Environments: Read, OrgMembers: Read
+# not sure where the rest of the info went for the deploy token permissions, but also need: Actions: Read (needed for dealing with Environments)
 
 
 def create_github_provider() -> Provider:
@@ -58,7 +65,7 @@ def create_github_provider() -> Provider:
     )
 
 
-class GithubRepoConfig(BaseModel, frozen=True):
+class GithubRepoConfig(BaseModel):
     name: str
     visibility: Literal["private", "public"] = "private"
     description: str
@@ -80,6 +87,9 @@ class GithubRepoConfig(BaseModel, frozen=True):
         True  # set to False if the repo already exists but you just want to apply some other Pulumi to it
     )
     import_existing_repo_using_config: Self | None = None
+    create_pypi_publishing_environments: bool = (
+        False  # this generally gets automatically updated based on the package claims in the Artifact Stores module
+    )
 
 
 class GithubRepo(ComponentResource):
@@ -133,6 +143,31 @@ class GithubRepo(ComponentResource):
                     import_=None if config.import_existing_repo_using_config is None else config.name,
                 ),
             )
+        if config.create_pypi_publishing_environments:
+            pypi_env = RepositoryEnvironment(
+                append_resource_suffix(f"{config.name}-pypi"),
+                repository=config.name,
+                environment="pypi",
+                deployment_branch_policy=RepositoryEnvironmentDeploymentBranchPolicyArgs(
+                    custom_branch_policies=True,
+                    protected_branches=False,  # github does not allow setting protected branches to True when custom_branch_policies is True...not sure why
+                ),
+                opts=ResourceOptions(parent=self, provider=provider),
+            )
+            _ = RepositoryEnvironmentDeploymentPolicy(
+                append_resource_suffix(f"{config.name}-pypi"),
+                repository=config.name,
+                environment=pypi_env.environment,
+                branch_pattern="main",
+                opts=ResourceOptions(parent=pypi_env, provider=provider),
+            )
+            _ = RepositoryEnvironment(
+                append_resource_suffix(f"{config.name}-test-pypi"),
+                repository=config.name,
+                environment="testpypi",
+                opts=ResourceOptions(parent=self, provider=provider),
+            )
+
         bypass_actors: Sequence[RepositoryRulesetBypassActorArgs] = []
         if config.org_admin_rule_bypass:
             bypass_actors.append(
@@ -245,5 +280,12 @@ def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Pro
                 ),
             ]
         )
+    package_claims_list: list[RepoPackageClaims] = []
+    create_internal_packages_configs(package_claims_list)
+    for package_claim in package_claims_list:
+        for config in configs:
+            if config.name == package_claim.repo_name:
+                config.create_pypi_publishing_environments = True
+                break
     for config in configs:
         _ = GithubRepo(config=config, provider=provider)
