@@ -280,11 +280,12 @@ def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Pro
                 ),
             ]
         )
-    config_list: list[RepoPackageClaims] = []
-    create_internal_packages_configs(config_list)
-    for config in configs:
-        for package_claim in config_list:
-            if package_claim.repo_name == config.name:
+    package_claims_list: list[RepoPackageClaims] = []
+    create_internal_packages_configs(package_claims_list)
+    for package_claim in package_claims_list:
+        for config in configs:
+            if config.name == package_claim.repo_name:
                 config.create_pypi_publishing_environments = True
                 break
+    for config in configs:
         _ = GithubRepo(config=config, provider=provider)
