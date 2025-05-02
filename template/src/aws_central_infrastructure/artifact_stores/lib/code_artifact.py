@@ -36,6 +36,7 @@ STAGING_REPO_NAME = f"{CENTRAL_INFRA_GITHUB_ORG_NAME}-staging"
 class RepoPackageClaims(BaseModel):
     repo_name: str
     repo_org: str = CENTRAL_INFRA_GITHUB_ORG_NAME
+    publish_to_public_registry: bool = False
     pypi_package_names: set[str] = Field(default_factory=set)
     npm_package_names: set[str] = Field(default_factory=set)
     nuget_package_names: set[str] = Field(default_factory=set)
