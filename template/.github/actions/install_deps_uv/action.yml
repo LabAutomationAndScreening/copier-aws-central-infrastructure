@@ -4,11 +4,11 @@ inputs:
   python-version:
     type: string
     description: Python version to install
-  uv-sync:
+  install-deps:
     required: false
     default: true
     type: boolean
-    description: Install the python packages with uv sync
+    description: Whether to run the setup-deps script, or just to setup basic CI tooling
   project-dir:
     type: string
     description: What's the relative path to the project?
@@ -40,7 +40,7 @@ runs:
       shell: bash
 
     - name: Setup python
-      uses: actions/setup-python@v5.5.0
+      uses: actions/setup-python@v5.6.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
@@ -56,35 +56,18 @@ runs:
 
     - name: OIDC Auth for CodeArtifact
       if: ${{ inputs.code-artifact-auth-role-name != 'no-code-artifact' }}
-      uses: aws-actions/configure-aws-credentials@v4.1.0
+      uses: aws-actions/configure-aws-credentials@v4.2.0
       with:
         role-to-assume: arn:aws:iam::${{ inputs.code-artifact-auth-role-account-id }}:role/${{ inputs.code-artifact-auth-role-name }}
         aws-region: ${{ inputs.code-artifact-auth-region }}
 
     - name: Install Dependencies (Linux)
-      if: ${{ inputs.uv-sync && runner.os == 'Linux' }}
+      if: ${{ inputs.install-deps && runner.os == 'Linux' }}
       run: |
         sh .devcontainer/manual-setup-deps.sh ${{ env.PYTHON_VERSION }}
       shell: bash
 
-
-
-
     - name: Install Dependencies (Windows)
-      if: ${{ inputs.uv-sync && runner.os == 'Windows' }}
+      if: ${{ inputs.install-deps && runner.os == 'Windows' }}
       run: .github/actions/install_deps_uv/manual-setup-deps.ps1 ${{ env.PYTHON_VERSION }}
-      shell: pwsh
-
-    - name: List Dependencies (Linux)
-      if: ${{ inputs.uv-sync && runner.os == 'Linux' }}
-      working-directory: ${{ inputs.working-directory }}
-      run: |
-        uv pip list
-      shell: bash
-
-    - name: List Dependencies (Windows)
-      if: ${{ inputs.uv-sync && runner.os == 'Windows' }}
-      working-directory: ${{ inputs.working-directory }}
-      run: |
-        & uv pip list
       shell: pwsh
