@@ -94,7 +94,7 @@ class GithubRepoConfig(BaseModel):
 
 class GithubRepo(ComponentResource):
     def __init__(self, *, config: GithubRepoConfig, provider: Provider | None = None):
-        super().__init__("labauto:GithubRepo", append_resource_suffix(config.name), None)
+        super().__init__("labauto:GithubRepo", append_resource_suffix(config.name, max_length=150), None)
         if config.create_repo:
             repo = Repository(
                 append_resource_suffix(config.name),
