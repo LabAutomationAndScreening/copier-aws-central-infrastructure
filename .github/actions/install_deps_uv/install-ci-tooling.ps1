@@ -3,7 +3,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-irm https://astral.sh/uv/0.6.17/install.ps1 | iex
+irm https://astral.sh/uv/0.7.3/install.ps1 | iex
 
 # Add uv to path (in github runner)
 $env:Path = "C:\Users\runneradmin\.local\bin;$env:Path"
@@ -21,10 +21,10 @@ if ($args.Count -eq 0) {
 }
 
 
-$env:UV_PYTHON = "$input"
+$env:UV_PYTHON = "$input_arg"
 $env:UV_PYTHON_PREFERENCE="only-system"
 
-& uv tool install 'copier==9.6.0' --with 'copier-templates-extensions==0.3.0'
+& uv tool install 'copier==9.7.1' --with 'copier-templates-extensions==0.3.1'
 
 & uv tool install 'pre-commit==4.2.0'
 

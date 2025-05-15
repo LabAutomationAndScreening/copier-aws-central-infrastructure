@@ -94,10 +94,10 @@ class GithubRepoConfig(BaseModel):
 
 class GithubRepo(ComponentResource):
     def __init__(self, *, config: GithubRepoConfig, provider: Provider | None = None):
-        super().__init__("labauto:GithubRepo", append_resource_suffix(config.name), None)
+        super().__init__("labauto:GithubRepo", append_resource_suffix(config.name, max_length=150), None)
         if config.create_repo:
             repo = Repository(
-                append_resource_suffix(config.name),
+                append_resource_suffix(config.name, max_length=150),
                 name=config.name,
                 visibility=config.visibility
                 if config.import_existing_repo_using_config is None
@@ -145,7 +145,7 @@ class GithubRepo(ComponentResource):
             )
         if config.create_pypi_publishing_environments:
             pypi_env = RepositoryEnvironment(
-                append_resource_suffix(f"{config.name}-pypi"),
+                append_resource_suffix(f"{config.name}-pypi", max_length=150),
                 repository=config.name,
                 environment="pypi",
                 deployment_branch_policy=RepositoryEnvironmentDeploymentBranchPolicyArgs(
@@ -155,14 +155,14 @@ class GithubRepo(ComponentResource):
                 opts=ResourceOptions(parent=self, provider=provider),
             )
             _ = RepositoryEnvironmentDeploymentPolicy(
-                append_resource_suffix(f"{config.name}-pypi"),
+                append_resource_suffix(f"{config.name}-pypi", max_length=150),
                 repository=config.name,
                 environment=pypi_env.environment,
                 branch_pattern="main",
                 opts=ResourceOptions(parent=pypi_env, provider=provider),
             )
             _ = RepositoryEnvironment(
-                append_resource_suffix(f"{config.name}-test-pypi"),
+                append_resource_suffix(f"{config.name}-test-pypi", max_length=150),
                 repository=config.name,
                 environment="testpypi",
                 opts=ResourceOptions(parent=self, provider=provider),
@@ -187,7 +187,7 @@ class GithubRepo(ComponentResource):
             )
         ruleset_depends = [] if not config.create_repo else [repo]  # type: ignore[reportPossiblyUnboundVariable] # this is a false positive, due to the conditionals in this ternary and the logic above
         _ = RepositoryRuleset(
-            append_resource_suffix(config.name),
+            append_resource_suffix(config.name, max_length=150),
             bypass_actors=bypass_actors
             if bypass_actors
             else None,  # supplying an empty list seems to cause problems, so explicitly pass None if no bypass
