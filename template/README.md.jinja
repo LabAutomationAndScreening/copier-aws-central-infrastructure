@@ -70,6 +70,11 @@ uv run python -m aws_central_infrastructure.identity_center.lib.pulumi_deploy --
 Run a Pulumi Preview for the GitHub Repositories project:
 ```bash
 uv run python -m aws_central_infrastructure.github_repos.lib.pulumi_deploy --stack=prod
+```{% endraw %}{% endif %}{% if manage_okta %}{% raw %}
+
+Run a Pulumi Preview for the Okta project:
+```bash
+uv run python -m aws_central_infrastructure.okta.lib.pulumi_deploy --stack=prod
 ```{% endraw %}{% endif %}{% raw %}
 
 
