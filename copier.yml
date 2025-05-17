@@ -116,6 +116,11 @@ identity_center_production_account_id:
     type: str
     help: What is the account ID for the delegated account to manage the AWS Identity Center?
 
+manage_okta:
+    type: bool
+    help: Do you want to use this repository to manage Okta through Infrastructure as Code?
+    default: no
+
 manage_github_repos:
     type: bool
     help: Do you want to use this repository to manage some of the other GitHub repositories through Infrastructure as Code?

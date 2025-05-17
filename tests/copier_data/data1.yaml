@@ -19,5 +19,6 @@ central_infra_github_organization_name: my-org
 initial_iac_management_deploy_occurred: false
 identity_center_production_account_id: 023202320444
 configure_cloud_courier: false
+manage_okta: true
 manage_github_repos: false
 create_private_subnet: true
