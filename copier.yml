@@ -121,6 +121,11 @@ manage_okta:
     help: Do you want to use this repository to manage Okta through Infrastructure as Code?
     default: no
 
+okta_org_name:
+    type: str
+    help: What's the okta org name?
+    when: "{{ manage_okta }}"
+
 manage_github_repos:
     type: bool
     help: Do you want to use this repository to manage some of the other GitHub repositories through Infrastructure as Code?
