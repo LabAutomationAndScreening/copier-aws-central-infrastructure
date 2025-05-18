@@ -69,6 +69,20 @@ jobs:
       PREVIEW_ROLE_NAME: InfraPreview--{% endraw %}{{ repo_name }}{% raw %}
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
+      AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"{% endraw %}{% endif %}{% if manage_okta %}{% raw %}
+  okta-pulumi:
+    uses: ./.github/workflows/pulumi-aws.yml
+    needs: [ unit-test ]
+    with:
+      AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
+      PULUMI_STACK_NAME: prod
+      PYTHON_VERSION: {% endraw %}{{ python_version }}{% raw %}
+      DEPLOY_SCRIPT_MODULE_NAME: aws_central_infrastructure.okta.lib
+      DEPLOY_SCRIPT_NAME: pulumi_deploy
+      PULUMI_PREVIEW: true
+      PREVIEW_ROLE_NAME: InfraPreview--{% endraw %}{{ repo_name }}{% raw %}
+      PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
+      PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
       AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"{% endraw %}{% endif %}{% raw %}
 
   central-networking-pulumi:
@@ -125,11 +139,12 @@ jobs:
       - artifact-stores-pulumi
       - central-networking-pulumi{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}
       - identity-center-pulumi{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %}
-      - github-repos-pulumi{% endraw %}{% endif %}{% raw %}
+      - github-repos-pulumi{% endraw %}{% endif %}{% if manage_okta %}{% raw %}
+      - okta-pulumi{% endraw %}{% endif %}{% raw %}
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.iac-management-pulumi.result != 'success' || needs.artifact-stores-pulumi.result != 'success' || needs.central-networking-pulumi.result != 'success'{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %} || needs.identity-center-pulumi.result != 'success'{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %} || needs.github-repos-pulumi.result != 'success'{% endraw %}{% endif %}{% raw %}
+        if: needs.iac-management-pulumi.result != 'success' || needs.artifact-stores-pulumi.result != 'success' || needs.central-networking-pulumi.result != 'success'{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %} || needs.identity-center-pulumi.result != 'success'{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %} || needs.github-repos-pulumi.result != 'success'{% endraw %}{% endif %}{% if manage_okta %}{% raw %} || needs.okta-pulumi.result != 'success'{% endraw %}{% endif %}{% raw %}
         run: |
           exit 1
       - name: Mark updated Dependabot commit of devcontainer hash as succeeded
