@@ -11,7 +11,7 @@ dependencies = [
 
 
     # Managed by upstream template
-    "pyright>={% endraw %}{{ pyright_version }}{% raw %}",
+    "pyright=={% endraw %}{{ pyright_version }}{% raw %}", # temporarily pin due to bug in 1.1.401 https://github.com/microsoft/pyright/issues/10487
     "pytest>={% endraw %}{{ pytest_version }}{% raw %}",
     "pytest-cov>={% endraw %}{{ pytest_cov_version }}{% raw %}",
     "pytest-randomly>={% endraw %}{{ pytest_randomly_version }}{% raw %}",
@@ -23,7 +23,7 @@ dependencies = [
     "ephemeral-pulumi-deploy>={% endraw %}{{ ephemeral_pulumi_deploy_version }}{% raw %}",
     "lab-auto-pulumi>={% endraw %}{{ lab_auto_pulumi_version }}{% raw %}",
     "boto3>={% endraw %}{{ boto3_version }}{% raw %}",
-    "boto3-stubs[all]=={% endraw %}1.36.3{% raw %}", # there's a bug/conflict in 1.37.4 affecting pyright: https://github.com/LabAutomationAndScreening/copier-cloud-courier-infrastructure/actions/runs/13596390146/job/38014193360#step:11:69
+    "boto3-stubs[all]=={% endraw %}{{ boto3_version }}{% raw %}",
     "pydantic>={% endraw %}{{ pydantic_version }}{% raw %}",
 ]
 
