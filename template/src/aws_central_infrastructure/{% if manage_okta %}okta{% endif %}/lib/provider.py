@@ -1,9 +1,11 @@
 import boto3
 from ephemeral_pulumi_deploy import get_config_str
 from lab_auto_pulumi import MANUAL_IAC_SECRETS_PREFIX
+from pulumi.runtime import is_dry_run
 from pulumi_okta import Provider
 
-OKTA_DEPLOY_TOKEN_SECRET_NAME = f"{MANUAL_IAC_SECRETS_PREFIX}/okta-deploy-access-token"
+OKTA_DEPLOY_TOKEN_SECRET_NAME = f"{MANUAL_IAC_SECRETS_PREFIX}/deploy/okta-access-token"
+OKTA_PREVIEW_TOKEN_SECRET_NAME = f"{MANUAL_IAC_SECRETS_PREFIX}/preview/okta-access-token"
 
 
 def create_okta_provider() -> Provider:
@@ -13,7 +15,7 @@ def create_okta_provider() -> Provider:
         Filters=[
             {
                 "Key": "name",
-                "Values": [OKTA_DEPLOY_TOKEN_SECRET_NAME],
+                "Values": [OKTA_PREVIEW_TOKEN_SECRET_NAME if is_dry_run() else OKTA_DEPLOY_TOKEN_SECRET_NAME],
             }
         ]
     )
