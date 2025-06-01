@@ -69,7 +69,8 @@ jobs:
       PREVIEW_ROLE_NAME: InfraPreview--{% endraw %}{{ repo_name }}{% raw %}
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
-      AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"{% endraw %}{% endif %}{% if manage_okta %}{% raw %}
+      AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
+      ADDITIONAL_MUTEX_SUFFIX: github{% endraw %}{% endif %}{% if manage_okta %}{% raw %}
   okta-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
     needs: [ unit-test ]
@@ -83,7 +84,8 @@ jobs:
       PREVIEW_ROLE_NAME: InfraPreview--{% endraw %}{{ repo_name }}{% raw %}
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
-      AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"{% endraw %}{% endif %}{% raw %}
+      AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
+      ADDITIONAL_MUTEX_SUFFIX: okta{% endraw %}{% endif %}{% raw %}
 
   central-networking-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
