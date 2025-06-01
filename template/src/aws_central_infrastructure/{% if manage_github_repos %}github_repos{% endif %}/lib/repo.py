@@ -5,13 +5,11 @@ from typing import Self
 import boto3
 from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import get_config_str
-from ephemeral_pulumi_deploy.utils import common_tags_native
 from lab_auto_pulumi import GITHUB_DEPLOY_TOKEN_SECRET_NAME
 from lab_auto_pulumi import GITHUB_PREVIEW_TOKEN_SECRET_NAME
 from pulumi import ComponentResource
 from pulumi import ResourceOptions
 from pulumi.runtime import is_dry_run
-from pulumi_aws_native import secretsmanager
 from pulumi_github import Provider
 from pulumi_github import Repository
 from pulumi_github import RepositoryEnvironment
@@ -223,25 +221,6 @@ class GithubRepo(ComponentResource):
 
 
 def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Provider) -> None:
-    # Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write
-    # After the initial deployment which creates the secret, go in and use the Manual Secrets permission set to update the secret with the real token, then you can create repos
-    _ = secretsmanager.Secret(
-        append_resource_suffix("github-deploy-access-token"),
-        name=GITHUB_DEPLOY_TOKEN_SECRET_NAME,
-        description="GitHub access token",
-        secret_string="will-need-to-be-manually-entered",  # noqa: S106 # this is not a real secret
-        tags=common_tags_native(),
-        opts=ResourceOptions(ignore_changes=["secret_string"]),
-    )
-    _ = secretsmanager.Secret(
-        append_resource_suffix("github-preview-access-token"),
-        name=GITHUB_PREVIEW_TOKEN_SECRET_NAME,
-        description="GitHub access token",
-        secret_string="will-need-to-be-manually-entered",  # noqa: S106 # this is not a real secret
-        tags=common_tags_native(),
-        opts=ResourceOptions(ignore_changes=["secret_string"]),
-    )
-
     if configs is None:
         configs = []
     if not configs:
