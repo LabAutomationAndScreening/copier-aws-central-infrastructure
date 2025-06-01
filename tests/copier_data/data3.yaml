@@ -30,6 +30,7 @@ okta_org_name: your-okta-org
 okta_tokens_created: true
 manage_github_repos: true
 initial_github_admin: ada-lovelace
+use_repo_secret_for_github_iac_tokens: false
 github_tokens_created: false
 aws_organization_repo_name: my-aws-organization
 import_github_aws_org_repos: true
