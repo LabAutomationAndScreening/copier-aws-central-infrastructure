@@ -144,7 +144,7 @@ initial_github_admin:
 
 use_repo_secret_for_github_iac_tokens:
     type: bool
-    help: Not recommended for enterprise users, this allows much less controlled access to secrets, only do this if you're a 1-2 person team super concerned about a dollar per month of AWS SecretsManager charges. Do you want skip using AWS Secrets Manager to hold the Github deploy tokens and just add them as repository secrets?
+    help: Not recommended for enterprise users, this allows much less controlled access to secrets, only do this if you're a 1-2 person team super concerned about a dollar per month of AWS SecretsManager charges.\nDo you want skip using AWS Secrets Manager to hold the Github deploy tokens and just add them as repository secrets?
     default: no
     when: "{{ manage_github_repos }}"
 
