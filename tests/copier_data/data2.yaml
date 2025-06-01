@@ -28,6 +28,7 @@ cloud_courier_infra_repo_name: my-cloud-courier-infra
 manage_okta: false
 manage_github_repos: true
 initial_github_admin: leet-coder
+github_tokens_created: true
 aws_organization_repo_name: my-aws-organization
 import_github_aws_org_repos: true
 finished_importing_github_aws_org_repos: true

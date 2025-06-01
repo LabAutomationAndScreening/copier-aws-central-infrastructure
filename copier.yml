@@ -128,7 +128,7 @@ okta_org_name:
 
 okta_tokens_created:
     type: bool
-    help: Has a merge to main already occurred that created the AWS Secrets to hold the Okta tokens and have those API tokens been manually entered into Secrets Manager?
+    help: Has a merge to main already occurred that created the AWS Secrets to hold the Okta API tokens and have those API tokens been manually entered into Secrets Manager?
     default: no
     when: "{{ manage_okta }}"
 
@@ -140,6 +140,12 @@ manage_github_repos:
 initial_github_admin:
     type: str
     help: What is your GitHub username (to be set as the initial admin of the root Team)?
+    when: "{{ manage_github_repos }}"
+
+github_tokens_created:
+    type: bool
+    help: Has a merge to main already occurred that created the AWS Secrets to hold the Github API tokens and have those API tokens been manually entered into Secrets Manager?
+    default: no
     when: "{{ manage_github_repos }}"
 
 import_github_aws_org_repos:
