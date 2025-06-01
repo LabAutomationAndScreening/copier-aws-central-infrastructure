@@ -126,6 +126,12 @@ okta_org_name:
     help: What's the okta org name?
     when: "{{ manage_okta }}"
 
+okta_tokens_created:
+    type: bool
+    help: Has a merge to main already occurred that created the AWS Secrets to hold the Okta tokens and have those API tokens been manually entered into Secrets Manager?
+    default: no
+    when: "{{ manage_okta }}"
+
 manage_github_repos:
     type: bool
     help: Do you want to use this repository to manage some of the other GitHub repositories through Infrastructure as Code?

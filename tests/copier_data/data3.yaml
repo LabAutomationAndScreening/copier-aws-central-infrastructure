@@ -27,6 +27,7 @@ configure_cloud_courier: true
 cloud_courier_infra_repo_name: my-cloud-courier-infra
 manage_okta: true
 okta_org_name: your-okta-org
+okta_tokens_created: true
 manage_github_repos: true
 initial_github_admin: leet-coder
 aws_organization_repo_name: my-aws-organization
