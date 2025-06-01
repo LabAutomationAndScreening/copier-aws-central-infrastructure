@@ -4,8 +4,8 @@ from lab_auto_pulumi import MANUAL_IAC_SECRETS_PREFIX
 from pulumi.runtime import is_dry_run
 from pulumi_okta import Provider
 
-OKTA_DEPLOY_TOKEN_SECRET_NAME = f"{MANUAL_IAC_SECRETS_PREFIX}/deploy/okta-access-token"
-OKTA_PREVIEW_TOKEN_SECRET_NAME = f"{MANUAL_IAC_SECRETS_PREFIX}/preview/okta-access-token"
+OKTA_DEPLOY_TOKEN_SECRET_NAME = f"{MANUAL_IAC_SECRETS_PREFIX}/deploy-tokens/okta-access-token"
+OKTA_PREVIEW_TOKEN_SECRET_NAME = f"{MANUAL_IAC_SECRETS_PREFIX}/preview-tokens/okta-access-token"
 
 
 def create_okta_provider() -> Provider:
