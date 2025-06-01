@@ -25,8 +25,12 @@ initial_iac_management_deploy_occurred: true
 identity_center_production_account_id: 123499989012
 configure_cloud_courier: true
 cloud_courier_infra_repo_name: my-cloud-courier-infra
+manage_okta: true
+okta_org_name: your-okta-org
+okta_tokens_created: true
 manage_github_repos: true
-initial_github_admin: leet-coder
+initial_github_admin: ada-lovelace
+github_tokens_created: false
 aws_organization_repo_name: my-aws-organization
 import_github_aws_org_repos: true
 finished_importing_github_aws_org_repos: false
