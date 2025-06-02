@@ -142,9 +142,15 @@ initial_github_admin:
     help: What is your GitHub username (to be set as the initial admin of the root Team)?
     when: "{{ manage_github_repos }}"
 
+use_repo_secret_for_github_iac_tokens:
+    type: bool
+    help: Not recommended for enterprise users, this allows much less controlled access to secrets, only do this if you're a 1-2 person team super concerned about a dollar per month of AWS SecretsManager charges.\nDo you want skip using AWS Secrets Manager to hold the Github deploy tokens and just add them as repository secrets?
+    default: no
+    when: "{{ manage_github_repos }}"
+
 github_tokens_created:
     type: bool
-    help: Has a merge to main already occurred that created the AWS Secrets to hold the Github API tokens and have those API tokens been manually entered into Secrets Manager?
+    help: Has a merge to main already occurred that created the AWS Secrets to hold the Github API tokens and have those API tokens been manually entered into Secrets Manager? (Or has the token been entered as a secret in the repository if you chose that route?)
     default: no
     when: "{{ manage_github_repos }}"
 

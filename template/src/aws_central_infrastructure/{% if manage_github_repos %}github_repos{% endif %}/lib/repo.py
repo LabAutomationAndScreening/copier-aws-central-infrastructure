@@ -2,16 +2,9 @@ from typing import TYPE_CHECKING
 from typing import Literal
 from typing import Self
 
-import boto3
 from ephemeral_pulumi_deploy import append_resource_suffix
-from ephemeral_pulumi_deploy import get_config_str
-from ephemeral_pulumi_deploy.utils import common_tags_native
-from lab_auto_pulumi import GITHUB_DEPLOY_TOKEN_SECRET_NAME
-from lab_auto_pulumi import GITHUB_PREVIEW_TOKEN_SECRET_NAME
 from pulumi import ComponentResource
 from pulumi import ResourceOptions
-from pulumi.runtime import is_dry_run
-from pulumi_aws_native import secretsmanager
 from pulumi_github import Provider
 from pulumi_github import Repository
 from pulumi_github import RepositoryEnvironment
@@ -39,31 +32,6 @@ if TYPE_CHECKING:
 
     from aws_central_infrastructure.artifact_stores.lib import RepoPackageClaims
 
-# preview token permissions: all repositories, Administration:Read, Contents: Read, Environments: Read, OrgMembers: Read
-# not sure where the rest of the info went for the deploy token permissions, but also need: Actions: Read (needed for dealing with Environments)
-
-
-def create_github_provider() -> Provider:
-    # Trying to use pulumi_aws GetSecretVersionResult isn't working because it still returns an Output, and Provider requires a string. Even attempting to use apply
-    secrets_client = boto3.client("secretsmanager")
-    secrets_response = secrets_client.list_secrets(
-        Filters=[
-            {
-                "Key": "name",
-                "Values": [GITHUB_PREVIEW_TOKEN_SECRET_NAME if is_dry_run() else GITHUB_DEPLOY_TOKEN_SECRET_NAME],
-            }
-        ]
-    )
-    secrets = secrets_response["SecretList"]
-    assert len(secrets) == 1, f"expected only 1 matching secret, but found {len(secrets)}"
-    assert "ARN" in secrets[0], f"expected 'ARN' in secrets[0], but found {secrets[0].keys()}"
-    secret_id = secrets[0]["ARN"]
-    token = secrets_client.get_secret_value(SecretId=secret_id)["SecretString"]
-
-    return Provider(  # TODO: figure out why this isn't getting automatically picked up from the config
-        "default", token=token, owner=get_config_str("github:owner")
-    )
-
 
 class GithubRepoConfig(BaseModel):
     name: str
@@ -74,11 +42,13 @@ class GithubRepoConfig(BaseModel):
     delete_branch_on_merge: bool = True
     has_issues: bool = True
     has_projects: bool = False
+    has_wiki: bool = False
     has_downloads: bool = False  # this should almost never be true (it's been deprecated), but it's here for help importing repos that somehow have it set to true
     allow_auto_merge: bool = True
     squash_merge_commit_title: str = "PR_TITLE"
     squash_merge_commit_message: str = "PR_BODY"
     require_branch_to_be_up_to_date_before_merge: bool = True
+    vulnerability_alerts: bool = True
     org_admin_rule_bypass: bool = False
     repo_write_role_rule_bypass: bool = False
     require_code_owner_review: bool = True
@@ -102,7 +72,9 @@ class GithubRepo(ComponentResource):
                 visibility=config.visibility
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.visibility,
-                description=config.description if config.import_existing_repo_using_config is None else None,
+                description=config.description
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.description,
                 allow_merge_commit=config.allow_merge_commit
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.allow_merge_commit,
@@ -118,6 +90,9 @@ class GithubRepo(ComponentResource):
                 has_projects=config.has_projects
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.has_projects,
+                has_wiki=config.has_wiki
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.has_wiki,
                 has_downloads=config.has_downloads
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.has_downloads,
@@ -131,6 +106,9 @@ class GithubRepo(ComponentResource):
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.squash_merge_commit_message,
                 auto_init=True if config.import_existing_repo_using_config is None else None,
+                vulnerability_alerts=config.vulnerability_alerts
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.vulnerability_alerts,
                 allow_update_branch=config.allow_update_branch
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.allow_update_branch,
@@ -223,25 +201,6 @@ class GithubRepo(ComponentResource):
 
 
 def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Provider) -> None:
-    # Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write
-    # After the initial deployment which creates the secret, go in and use the Manual Secrets permission set to update the secret with the real token, then you can create repos
-    _ = secretsmanager.Secret(
-        append_resource_suffix("github-deploy-access-token"),
-        name=GITHUB_DEPLOY_TOKEN_SECRET_NAME,
-        description="GitHub access token",
-        secret_string="will-need-to-be-manually-entered",  # noqa: S106 # this is not a real secret
-        tags=common_tags_native(),
-        opts=ResourceOptions(ignore_changes=["secret_string"]),
-    )
-    _ = secretsmanager.Secret(
-        append_resource_suffix("github-preview-access-token"),
-        name=GITHUB_PREVIEW_TOKEN_SECRET_NAME,
-        description="GitHub access token",
-        secret_string="will-need-to-be-manually-entered",  # noqa: S106 # this is not a real secret
-        tags=common_tags_native(),
-        opts=ResourceOptions(ignore_changes=["secret_string"]),
-    )
-
     if configs is None:
         configs = []
     if not configs:
