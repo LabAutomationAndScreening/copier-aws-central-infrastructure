@@ -42,6 +42,7 @@ class GithubRepoConfig(BaseModel):
     delete_branch_on_merge: bool = True
     has_issues: bool = True
     has_projects: bool = False
+    has_wiki: bool = False
     has_downloads: bool = False  # this should almost never be true (it's been deprecated), but it's here for help importing repos that somehow have it set to true
     allow_auto_merge: bool = True
     squash_merge_commit_title: str = "PR_TITLE"
@@ -89,6 +90,9 @@ class GithubRepo(ComponentResource):
                 has_projects=config.has_projects
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.has_projects,
+                has_wiki=config.has_wiki
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.has_wiki,
                 has_downloads=config.has_downloads
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.has_downloads,
