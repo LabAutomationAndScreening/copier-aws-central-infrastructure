@@ -14,8 +14,8 @@ from .collaborators import RepositoryCollaboratorConfig
 from .collaborators import create_repository_collaborators
 from .constants import GITHUB_TOKENS_CREATED
 from .constants import USE_REPO_SECRET_FOR_GITHUB_IAC_TOKENS
+from .create_provider import create_github_provider
 from .repo import GithubRepoConfig
-from .repo import create_github_provider
 from .repo import create_repos
 from .teams import GithubTeamConfig
 from .teams import create_teams
@@ -28,7 +28,7 @@ def pulumi_program() -> None:
     repo_configs: list[GithubRepoConfig] = []
     create_repo_configs(repo_configs)
     if not USE_REPO_SECRET_FOR_GITHUB_IAC_TOKENS:
-        # Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write
+        # Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write.  Organization: Members Read&Write
         # After the initial deployment which creates the secret, go in and use the Manual Secrets permission set to update the secret with the real token, then you can create repos
         _ = secretsmanager.Secret(
             append_resource_suffix("github-deploy-access-token"),

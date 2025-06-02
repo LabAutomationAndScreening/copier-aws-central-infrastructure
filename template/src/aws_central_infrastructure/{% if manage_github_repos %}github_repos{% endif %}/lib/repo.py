@@ -2,14 +2,9 @@ from typing import TYPE_CHECKING
 from typing import Literal
 from typing import Self
 
-import boto3
 from ephemeral_pulumi_deploy import append_resource_suffix
-from ephemeral_pulumi_deploy import get_config_str
-from lab_auto_pulumi import GITHUB_DEPLOY_TOKEN_SECRET_NAME
-from lab_auto_pulumi import GITHUB_PREVIEW_TOKEN_SECRET_NAME
 from pulumi import ComponentResource
 from pulumi import ResourceOptions
-from pulumi.runtime import is_dry_run
 from pulumi_github import Provider
 from pulumi_github import Repository
 from pulumi_github import RepositoryEnvironment
@@ -37,31 +32,6 @@ if TYPE_CHECKING:
 
     from aws_central_infrastructure.artifact_stores.lib import RepoPackageClaims
 
-# preview token permissions: all repositories, Administration:Read, Contents: Read, Environments: Read, OrgMembers: Read
-# not sure where the rest of the info went for the deploy token permissions, but also need: Actions: Read (needed for dealing with Environments)
-
-
-def create_github_provider() -> Provider:
-    # Trying to use pulumi_aws GetSecretVersionResult isn't working because it still returns an Output, and Provider requires a string. Even attempting to use apply
-    secrets_client = boto3.client("secretsmanager")
-    secrets_response = secrets_client.list_secrets(
-        Filters=[
-            {
-                "Key": "name",
-                "Values": [GITHUB_PREVIEW_TOKEN_SECRET_NAME if is_dry_run() else GITHUB_DEPLOY_TOKEN_SECRET_NAME],
-            }
-        ]
-    )
-    secrets = secrets_response["SecretList"]
-    assert len(secrets) == 1, f"expected only 1 matching secret, but found {len(secrets)}"
-    assert "ARN" in secrets[0], f"expected 'ARN' in secrets[0], but found {secrets[0].keys()}"
-    secret_id = secrets[0]["ARN"]
-    token = secrets_client.get_secret_value(SecretId=secret_id)["SecretString"]
-
-    return Provider(  # TODO: figure out why this isn't getting automatically picked up from the config
-        "default", token=token, owner=get_config_str("github:owner")
-    )
-
 
 class GithubRepoConfig(BaseModel):
     name: str
@@ -77,6 +47,7 @@ class GithubRepoConfig(BaseModel):
     squash_merge_commit_title: str = "PR_TITLE"
     squash_merge_commit_message: str = "PR_BODY"
     require_branch_to_be_up_to_date_before_merge: bool = True
+    vulnerability_alerts: bool = True
     org_admin_rule_bypass: bool = False
     repo_write_role_rule_bypass: bool = False
     require_code_owner_review: bool = True
@@ -100,7 +71,9 @@ class GithubRepo(ComponentResource):
                 visibility=config.visibility
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.visibility,
-                description=config.description if config.import_existing_repo_using_config is None else None,
+                description=config.description
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.description,
                 allow_merge_commit=config.allow_merge_commit
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.allow_merge_commit,
@@ -129,6 +102,9 @@ class GithubRepo(ComponentResource):
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.squash_merge_commit_message,
                 auto_init=True if config.import_existing_repo_using_config is None else None,
+                vulnerability_alerts=config.vulnerability_alerts
+                if config.import_existing_repo_using_config is None
+                else config.import_existing_repo_using_config.vulnerability_alerts,
                 allow_update_branch=config.allow_update_branch
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.allow_update_branch,
