@@ -69,7 +69,8 @@ jobs:
       PREVIEW_ROLE_NAME: InfraPreview--{% endraw %}{{ repo_name }}{% raw %}
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
-      AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
+      AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"{% endraw %}{% if use_repo_secret_for_github_iac_tokens %}{% raw %}
+      iac-github-api-tokens: ${{ secrets.IAC-GITHUB-API-TOKENS }}{% endraw %}{% endif %}{% raw %}
       ADDITIONAL_MUTEX_SUFFIX: github{% endraw %}{% endif %}{% if manage_okta %}{% raw %}
   okta-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
