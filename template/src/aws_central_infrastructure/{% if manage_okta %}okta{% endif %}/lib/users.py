@@ -4,17 +4,20 @@ from pulumi_okta import Provider
 from pulumi_okta.user import User
 from pydantic import BaseModel
 
+type EmailAddress = str
 
-class OktaUserConfig(BaseModel, frozen=True):
+
+class OktaUserConfig(BaseModel):
     username: str
     email: str
     first_name: str
     last_name: str
 
 
-def create_users(*, user_configs: list[OktaUserConfig], provider: Provider) -> None:
+def create_users(*, user_configs: list[OktaUserConfig], provider: Provider) -> dict[EmailAddress, User]:
+    user_objects: dict[EmailAddress, User] = {}
     for user_config in user_configs:
-        _ = User(
+        user_objects[user_config.email] = User(
             append_resource_suffix(f"{user_config.first_name.lower()}-{user_config.last_name.lower()}"),
             first_name=user_config.first_name,
             last_name=user_config.last_name,
@@ -22,3 +25,4 @@ def create_users(*, user_configs: list[OktaUserConfig], provider: Provider) -> N
             email=user_config.email,
             opts=ResourceOptions(provider=provider),
         )
+    return user_objects
