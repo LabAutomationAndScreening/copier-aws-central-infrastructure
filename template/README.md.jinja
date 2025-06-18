@@ -29,7 +29,7 @@ You can grant a Collaborator permissions for a repository even if that repositor
 
 ### Initial configuration for Github organization
 It's recommended to set the following permissions for the Organization to guide people towards doing more things via this repository instead of the Console.
-https://github.com/organizations/lab-sync/settings/member_privileges
+https://github.com/organizations/{% endraw %}{{ repo_org_name }}{% raw %}/settings/member_privileges
 
 * Base Permissions: Read
 * Repository Creation: Neither
@@ -42,7 +42,35 @@ At the moment, only Python packages are supported. See https://github.com/LabAut
 
 ## Allowing a git repository to publish a docker image to AWS Elastic Container Registry
 The file `src/aws_central_infrastructure/artifact_stores/container_registries.py` contains a list of repositories that are allowed to publish images to an AWS ECR. To create a new ECR that a repository can publish to, add a new entry to the `container_registries` list. This ensures that only one git repo has permission to publish to that ECR, and there's no conflicts of two repos overwriting each other's images.
+{% endraw %}{% if manage_okta %}{% raw %}
+## Okta
 
+It's recommended to configure Okta initially to use email address as the Okta username.
+
+As a first step of starting to have this repo manage Okta, you'll need to generate an API token for Okta and use the ManualSecretsEntry SSO Permission Set to store it in the created Secret in AWS Secrets Manager in the Central Infrastructure account. At the moment, it's not known what a good least-privilege set of permissions is for the token, nor how to generate a read-only token to use for the Preview token.
+
+### Users
+Add users to the `src/aws_central_infrastructure/okta/users.py` file.
+
+### Groups
+Groups are managed in the `src/aws_central_infrastructure/okta/groups.py` file. To add a new group, add a new entry to the `configs` list. Users are not directly assigned applications, applications are only assigned to groups. A user can be a member of more than one group.
+
+### Applications
+Applications are managed in the `src/aws_central_infrastructure/okta/apps.py` file. To add a new application, add a new entry to the `configs` list. Applications can be assigned to multiple groups.
+
+There is a base-64 encoded stack output of the XML metadata for each application that avoids the need to deal with escaped characters in the standard stack output. This can be decoded using any online tool and then uploaded to SaaS applications.
+
+#### Explicitly supported applications
+##### AWS Identity Center
+1. In order to obtain the ACS URL and Issuer URL, log in to the Identity Center and click `Change Identity Source` and then `Use External Identity Provider`. Use the `AwsIdentityCenterAppConfig` class and enter those URLs shown in the AWS Console. Then deploy the Okta IaC change.
+1. In the AWS Identity Center console, continue the process of changing the identity provider and take the stack output of the metadata XML and upload it.
+1. At the moment, there's no known way to automate the setup of SCIM provisioning. You'll need to now click "Enable" for "Automatic Provisioning" in the Identity Center console, and save the URL and API token.
+1. In the Okta Admin console, go to the AWS application settings and on the Provisioning tab enable the API endpoint (and enter in the URL and API token you saved from the previous step). Then go down and enable Create/Update/Remove SCIM provisioning for users.
+
+##### Fyle
+1. The Fyle team should provide you with the ACS URL and Entity URL. Use the `FyleAppConfig` class and enter those URLs. Then deploy the Okta IaC change.
+1. In the Fyle admin console, go to the SSO settings and upload the stack output of the metadata XML.
+{% endraw %}{% endif %}{% raw %}
 
 # Development
 
