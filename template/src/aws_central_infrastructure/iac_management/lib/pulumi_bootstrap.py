@@ -36,7 +36,7 @@ def create_classic_providers(
         assume_role = pulumi_aws.ProviderAssumeRoleArgs(role_arn=role_arn, session_name="pulumi")
         provider = pulumi_aws.Provider(
             f"central-infra-classic-provider-for-{account.name}",
-            assume_role=assume_role,
+            assume_roles=[assume_role],
             allowed_account_ids=[account.id],
             region=organization_home_region,
             opts=ResourceOptions(
