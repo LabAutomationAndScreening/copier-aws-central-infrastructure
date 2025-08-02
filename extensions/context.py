@@ -11,7 +11,7 @@ class ContextUpdater(ContextHook):
     @override
     def hook(self, context: dict[Any, Any]) -> dict[Any, Any]:
         context["uv_version"] = "0.8.3"
-        context["pnpm_version"] = "10.13.1"
+        context["pnpm_version"] = "10.14.0"
         context["pre_commit_version"] = "4.2.0"
         context["pyright_version"] = "1.1.403"
         context["pytest_version"] = "8.4.1"
@@ -37,7 +37,7 @@ class ContextUpdater(ContextHook):
         context["lab_auto_pulumi_version"] = "0.1.15"
 
         context["nuxt_ui_version"] = "^3.3.0"
-        context["nuxt_version"] = "^3.17.7"
+        context["nuxt_version"] = "^3.18.0"
         context["typescript_version"] = "^5.8.2"
         context["dot_env_cli_version"] = "^9.0.0"
         context["playwright_version"] = "^1.52.0"
