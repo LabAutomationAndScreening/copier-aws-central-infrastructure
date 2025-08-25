@@ -49,6 +49,7 @@ jobs:
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
       contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     needs: [ unit-test ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -66,6 +67,7 @@ jobs:
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
       contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     needs: [ unit-test ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -85,6 +87,7 @@ jobs:
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
       contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     needs: [ unit-test ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -103,6 +106,7 @@ jobs:
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
       contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     needs: [ iac-management-pulumi ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -120,6 +124,7 @@ jobs:
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
       contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     needs: [ iac-management-pulumi, central-networking-pulumi ] # spinning up AMI builders depends on central-networking
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -138,6 +143,7 @@ jobs:
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
       contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     needs: [ iac-management-pulumi, artifact-stores-pulumi ] # Identity Center depends on outputs from the Artifact Stores stack to set up permission sets
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
