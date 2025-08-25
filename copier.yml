@@ -41,18 +41,25 @@ python_package_registry:
         - AWS CodeArtifact
     default: PyPI
 
+python_ci_versions:
+    type: str
+    help: What versions should Python run CI on the instantiated template?
+    multiselect: true
+    choices:
+      - "3.12.7"
+      - "3.13.2"
 
 
 aws_identity_center_id:
     type: str
     help: What's the ID of your Organization's AWS Identity center, e.g. d-9145c20053?
-    when: "{{ python_package_registry == 'AWS CodeArtifact' or True }}"
+    when: "{{ python_package_registry == 'AWS CodeArtifact' or install_aws_ssm_port_forwarding_plugin or True }}"
 
 aws_org_home_region:
     type: str
     help: What is the home region of the AWS Organization (where all of the central infrastructure is deployed)?
     default: us-east-1
-    when: "{{ python_package_registry == 'AWS CodeArtifact' or True }}"
+    when: "{{ python_package_registry == 'AWS CodeArtifact' or install_aws_ssm_port_forwarding_plugin or True }}"
 
 aws_central_infrastructure_account_id:
     type: str
@@ -103,90 +110,6 @@ aws_region_for_stack:
 
 # Questions specific to this template
 
-central_infra_github_organization_name:
-    type: str
-    help: What is the name of the GitHub organization that owns the central infrastructure repository?
-
-initial_iac_management_deploy_occurred:
-    type: bool
-    help: Has the initial merge to main and the deployment of the IaC Management stack occurred yet?
-    default: no
-
-identity_center_production_account_id:
-    type: str
-    help: What is the account ID for the delegated account to manage the AWS Identity Center?
-
-manage_okta:
-    type: bool
-    help: Do you want to use this repository to manage Okta through Infrastructure as Code?
-    default: no
-
-okta_org_name:
-    type: str
-    help: What's the okta org name?
-    when: "{{ manage_okta }}"
-
-okta_tokens_created:
-    type: bool
-    help: Has a merge to main already occurred that created the AWS Secrets to hold the Okta API tokens and have those API tokens been manually entered into Secrets Manager?
-    default: no
-    when: "{{ manage_okta }}"
-
-manage_github_repos:
-    type: bool
-    help: Do you want to use this repository to manage some of the other GitHub repositories through Infrastructure as Code?
-    default: no
-
-initial_github_admin:
-    type: str
-    help: What is your GitHub username (to be set as the initial admin of the root Team)?
-    when: "{{ manage_github_repos }}"
-
-use_repo_secret_for_github_iac_tokens:
-    type: bool
-    help: Not recommended for enterprise users, this allows much less controlled access to secrets, only do this if you're a 1-2 person team super concerned about a dollar per month of AWS SecretsManager charges.\nDo you want skip using AWS Secrets Manager to hold the Github deploy tokens and just add them as repository secrets?
-    default: no
-    when: "{{ manage_github_repos }}"
-
-github_tokens_created:
-    type: bool
-    help: Has a merge to main already occurred that created the AWS Secrets to hold the Github API tokens and have those API tokens been manually entered into Secrets Manager? (Or has the token been entered as a secret in the repository if you chose that route?)
-    default: no
-    when: "{{ manage_github_repos }}"
-
-import_github_aws_org_repos:
-    type: bool
-    help: Do you want to start the process of importing the AWS-Organization and AWS-Central-Infrastructure repositories to be managed by this project?
-    default: no
-    when: "{{ manage_github_repos }}"
-
-finished_importing_github_aws_org_repos:
-    type: bool
-    help: Did you complete a successful deployment to main of importing the AWS-Organization and AWS-Central-Infrastructure repositories yet?
-    default: no
-    when: "{{ import_github_aws_org_repos }}"
-
-aws_organization_repo_name:
-    type: str
-    help: What is the name of the Github repository used to manage your AWS Organization?
-    when: "{{ manage_github_repos }}"
-    default: aws-organization
-
-create_private_subnet:
-    type: bool
-    help: Do you want to create a private subnet with a NAT Gateway within the central networking VPC (this will incur costs...around $30/month)?
-    default: no
-
-configure_cloud_courier:
-    type: bool
-    help: Should Identity Center permissions be automatically configured to facilitate using Cloud Courier?
-    default: no
-
-cloud_courier_infra_repo_name:
-    type: str
-    help: What is the name of the repository that contains the Cloud Courier Infrastructure?
-    when: "{{ configure_cloud_courier }}"
-    default: "cloud-courier-infrastructure"
 
 # Additional Settings
 _min_copier_version: "9.4"

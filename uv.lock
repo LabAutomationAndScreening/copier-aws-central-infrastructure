@@ -22,7 +22,7 @@ wheels = [
 
 [[package]]
 name = "copier"
-version = "9.9.0"
+version = "9.9.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama" },
@@ -39,9 +39,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "questionary" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bc/54/badd656b902a69915851caf0ad0dcb06682929f4e6a2f218acf15c373421/copier-9.9.0.tar.gz", hash = "sha256:db48d89bd30d957faa8c96fed757cb5718fdc0fe6b83bebb201424f448cb5216", size = 581833, upload-time = "2025-08-01T17:45:39.434Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/09/68/e938aec15c204e3c55db570598409fe6bbd81fb81e26616b4b23d96ea92c/copier-9.9.1.tar.gz", hash = "sha256:244bdf3ec5eb460dbe45ef22b825e9897b0bcc9d94ca96dad3ced3d786cfeab7", size = 586353, upload-time = "2025-08-18T12:14:17.316Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a1/95/dd0da5d106b3000c91614010f33ff4f3b6dc5a77eb11d6f01cd000228892/copier-9.9.0-py3-none-any.whl", hash = "sha256:d3484178560456fc3f138ec67349872dd2b378051c2360f95d7f31005ea9794d", size = 55985, upload-time = "2025-08-01T17:45:38.06Z" },
+    { url = "https://files.pythonhosted.org/packages/da/d9/f7abe1fe19f58c3ed2f1625dcd46ad76612c0f6b3ac320db77c267223f39/copier-9.9.1-py3-none-any.whl", hash = "sha256:9439280baca00194933b04885f1376b17e3287c2324053666fbe9a7a0aceaa44", size = 56118, upload-time = "2025-08-18T12:14:15.009Z" },
 ]
 
 [[package]]
@@ -59,9 +59,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "copier", specifier = ">=9.8.0" },
+    { name = "copier", specifier = ">=9.9.1" },
     { name = "copier-template-extensions", specifier = ">=0.3.2" },
-    { name = "pyright", extras = ["nodejs"], specifier = ">=1.1.403" },
+    { name = "pyright", extras = ["nodejs"], specifier = ">=1.1.404" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-cov", specifier = ">=6.2.1" },
     { name = "pytest-randomly", specifier = ">=3.16.0" },
@@ -325,15 +325,15 @@ wheels = [
 
 [[package]]
 name = "pyright"
-version = "1.1.403"
+version = "1.1.404"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nodeenv" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fe/f6/35f885264ff08c960b23d1542038d8da86971c5d8c955cfab195a4f672d7/pyright-1.1.403.tar.gz", hash = "sha256:3ab69b9f41c67fb5bbb4d7a36243256f0d549ed3608678d381d5f51863921104", size = 3913526, upload-time = "2025-07-09T07:15:52.882Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e2/6e/026be64c43af681d5632722acd100b06d3d39f383ec382ff50a71a6d5bce/pyright-1.1.404.tar.gz", hash = "sha256:455e881a558ca6be9ecca0b30ce08aa78343ecc031d37a198ffa9a7a1abeb63e", size = 4065679, upload-time = "2025-08-20T18:46:14.029Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/b6/b04e5c2f41a5ccad74a1a4759da41adb20b4bc9d59a5e08d29ba60084d07/pyright-1.1.403-py3-none-any.whl", hash = "sha256:c0eeca5aa76cbef3fcc271259bbd785753c7ad7bcac99a9162b4c4c7daed23b3", size = 5684504, upload-time = "2025-07-09T07:15:50.958Z" },
+    { url = "https://files.pythonhosted.org/packages/84/30/89aa7f7d7a875bbb9a577d4b1dc5a3e404e3d2ae2657354808e905e358e0/pyright-1.1.404-py3-none-any.whl", hash = "sha256:c7b7ff1fdb7219c643079e4c3e7d4125f0dafcc19d253b47e898d130ea426419", size = 5902951, upload-time = "2025-08-20T18:46:12.096Z" },
 ]
 
 [package.optional-dependencies]

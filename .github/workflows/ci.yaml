@@ -41,7 +41,6 @@ jobs:
         copier: [
           '--data-file tests/copier_data/data1.yaml',
           '--data-file tests/copier_data/data2.yaml',
-          '--data-file tests/copier_data/data3.yaml',
           ]
     runs-on: ${{ matrix.os }}
     env:
