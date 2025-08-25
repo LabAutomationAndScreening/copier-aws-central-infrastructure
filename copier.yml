@@ -41,18 +41,16 @@ python_package_registry:
         - AWS CodeArtifact
     default: PyPI
 
-
-
 aws_identity_center_id:
     type: str
     help: What's the ID of your Organization's AWS Identity center, e.g. d-9145c20053?
-    when: "{{ python_package_registry == 'AWS CodeArtifact' or True }}"
+    when: "{{ python_package_registry == 'AWS CodeArtifact' or install_aws_ssm_port_forwarding_plugin or True }}"
 
 aws_org_home_region:
     type: str
     help: What is the home region of the AWS Organization (where all of the central infrastructure is deployed)?
     default: us-east-1
-    when: "{{ python_package_registry == 'AWS CodeArtifact' or True }}"
+    when: "{{ python_package_registry == 'AWS CodeArtifact' or install_aws_ssm_port_forwarding_plugin or True }}"
 
 aws_central_infrastructure_account_id:
     type: str
@@ -102,7 +100,6 @@ aws_region_for_stack:
 
 
 # Questions specific to this template
-
 central_infra_github_organization_name:
     type: str
     help: What is the name of the GitHub organization that owns the central infrastructure repository?

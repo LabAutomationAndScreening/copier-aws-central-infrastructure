@@ -11,18 +11,22 @@ env:
   PRE_COMMIT_HOME: ${{ github.workspace }}/.precommit_cache
 
 permissions:
-    id-token: write
-    contents: write # needed for mutex, and updating dependabot branches
-    statuses: write # needed for updating status on Dependabot PRs
+  id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
+  contents: read # need to explicitly provide this whenever defining permissions because the default value is 'none' for anything not explicitly set when permissions are defined
 
 jobs:
   get-values:
     uses: ./.github/workflows/get-values.yaml
+    permissions:
+      contents: write # needed updating dependabot branches
 
   lint:
     needs: [ get-values ]
     name: Pre-commit
     uses: ./.github/workflows/pre-commit.yaml
+    permissions:
+      contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     with:
       python-version: {% endraw %}{{ python_version }}{% raw %}
 
@@ -43,6 +47,9 @@ jobs:
 
   iac-management-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
+    permissions:
+      contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     needs: [ unit-test ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -58,6 +65,9 @@ jobs:
 {% endraw %}{% if manage_github_repos %}{% raw %}
   github-repos-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
+    permissions:
+      contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     needs: [ unit-test ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -75,6 +85,9 @@ jobs:
       iac-github-api-tokens: ${{ secrets.IAC_GITHUB_API_TOKENS }}{% endraw %}{% endif %}{% endif %}{% if manage_okta %}{% raw %}
   okta-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
+    permissions:
+      contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     needs: [ unit-test ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -91,6 +104,9 @@ jobs:
 
   central-networking-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
+    permissions:
+      contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     needs: [ iac-management-pulumi ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -106,6 +122,9 @@ jobs:
 
   artifact-stores-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
+    permissions:
+      contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     needs: [ iac-management-pulumi, central-networking-pulumi ] # spinning up AMI builders depends on central-networking
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -122,6 +141,9 @@ jobs:
 
 {% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}  identity-center-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
+    permissions:
+      contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     needs: [ iac-management-pulumi, artifact-stores-pulumi ] # Identity Center depends on outputs from the Artifact Stores stack to set up permission sets
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -137,6 +159,8 @@ jobs:
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    permissions:
+      statuses: write # needed for updating status on Dependabot PRs
     needs:
       - get-values
       - iac-management-pulumi
