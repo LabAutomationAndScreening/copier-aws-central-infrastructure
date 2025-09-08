@@ -32,13 +32,13 @@ jobs:
     steps:
       - name: Checkout code during push
         if: ${{ github.event_name == 'push' }}
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.0
         with:
           ref: ${{ github.ref_name }} # explicitly get the head of the branch, which will include any new commits pushed if this is a dependabot branch
 
       - name: Checkout code not during push
         if: ${{ github.event_name != 'push' }}
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.0
 
       - name: Install latest versions of packages
         uses: ./.github/actions/install_deps
@@ -55,7 +55,7 @@ jobs:
         timeout-minutes: 30 # this is the amount of time this action will wait to attempt to acquire the mutex lock before failing, e.g. if other jobs are queued up in front of it
 
       - name: Cache Pre-commit hooks
-        uses: actions/cache@v4.2.3
+        uses: actions/cache@v4.2.4
         env:
           cache-name: cache-pre-commit-hooks
         with:
