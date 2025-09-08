@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: v0.0.68-8-g1db3e5e
+_commit: v0.0.68-10-g53631be
 _src_path: gh:LabAutomationAndScreening/copier-base-template.git
 description: Managing Central Infrastructure of an AWS Organization
 python_ci_versions:
