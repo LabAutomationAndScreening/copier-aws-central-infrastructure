@@ -42,11 +42,10 @@ repos:
 
   # Reformatting (should generally come before any file format or other checks, because reformatting can change things)
   - repo: https://github.com/crate-ci/typos
-    rev: 65a25783d8705c6a72d9fead19c44d87b4ff03c3  # frozen: v1
+    rev: edb4e206047e89b93ebe08f1a2ccc3d581a70cc7  # frozen: v1
     hooks:
       - id: typos
-        exclude:
-          |
+        exclude: |
           (?x)^(
               .*\.min.js|
               .*\.min.css|
@@ -56,16 +55,14 @@ repos:
     rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
       - id: trailing-whitespace
-        exclude:
-          |
+        exclude: |
           (?x)^(
               .*/vendor_files/.*|
               .*tests/.*/__snapshots__/.*|
           )$
       - id: end-of-file-fixer
         # the XML formatter hook doesn't leave a blank line at the end, so excluding XML files from this hook to avoid conflicts
-        exclude:
-          | # the extra trailing newline in the pull request template makes it easier to click there in the github console. The CLI that programmatically generates devcontainer-lock.json always ends the file incompatible with this hook.
+        exclude: | # the extra trailing newline in the pull request template makes it easier to click there in the github console. The CLI that programmatically generates devcontainer-lock.json always ends the file incompatible with this hook.
           (?x)^(
               .github/pull_request_template.md|
               template/.github/pull_request_template.md|
@@ -105,8 +102,8 @@ repos:
               .*pyrightconfig\.json|
           )$
 
-  - repo: https://github.com/pre-commit/mirrors-prettier # TODO: switch to a different approach...this was archived in 2024
-    rev: f12edd9c7be1c20cfa42420fd0e6df71e42b51ea # frozen: v4.0.0-alpha.8
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: 5ba47274f9b181bce26a5150a725577f3c336011  # frozen: v3.6.2
     hooks:
       - id: prettier
         # TODO: get template YAML and MD files more in line with prettier expectations so we can start using prettier on those too
@@ -128,6 +125,7 @@ repos:
               .*/vendor_files/.*|
               .*/schema.graphql|
               .*generated/graphql.ts|
+              template/.*|
           )$
         files: (.*.json)|(.*.ts)|(.*.jsx)|(.*.tsx)|(.*.yaml)|(.*.yml)|(.*.md)|(.*.html)|(.*.css)|(.*.scss)|(.*.less)|(.*.vue)|(.*.graphql)|(.*.gql)
 
@@ -181,6 +179,11 @@ repos:
       - id: check-merge-conflict
       - id: check-case-conflict
 
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 83987cd6ad8943c7f029b500b14aaf82c00a01fa  # frozen: 0.34.0
+    hooks:
+      - id: check-github-workflows
+
   - repo: https://github.com/maresb/check-json5
     rev: 893a2b5a0a27c3540bd8fcafe2968ccc05237179 # 1.0
     hooks:
@@ -208,6 +211,11 @@ repos:
     hooks:
       - id: detect-private-key
 
+  # - repo: https://github.com/woodruffw/zizmor-pre-commit # TODO: implement this: https://github.com/LabAutomationAndScreening/copier-base-template/issues/95
+  #   rev: b933184438555436e38621f46ceb0c417cbed400  # frozen: v1.13.0
+  #   hooks:
+  #     - id: zizmor
+
   # Linting
 
   - repo: https://github.com/Lucas-C/pre-commit-hooks-markup
@@ -218,7 +226,7 @@ repos:
         exclude: docs/.*\.rst$
 
   - repo: https://github.com/hadolint/hadolint
-    rev: 87de847754330ad47ae16bdfe2d1a757ccb4b4d4  # frozen: v2.13.1
+    rev: 4e697ba704fd23b2409b947a319c19c3ee54d24f  # frozen: v2.14.0
     hooks:
       - id: hadolint-docker
         name: Lint Dockerfiles
@@ -226,27 +234,48 @@ repos:
         description: Runs hadolint to lint Dockerfiles
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: db90487f48a9dd992d243ef63c156eaffddeaf28  # frozen: v0.12.11
+    rev: a113f03edeabb71305f025e6e14bd2cd68660e29  # frozen: v0.13.1
     hooks:
       - id: ruff
         name: ruff-src
         args: [--fix, --config=./ruff.toml]
         files: src/.+\.py$
+        exclude: |
+          (?x)^(
+              .*/graphql_codegen/.*|
+              .*/openapi_codegen/.*|
+          )$
       - id: ruff
         name: ruff-tests
         args: [--fix, --config=./ruff-test.toml]
         files: tests?/.+\.py$
+        exclude: |
+          (?x)^(
+              .*/graphql_codegen/.*|
+              .*/openapi_codegen/.*|
+          )$
       - id: ruff-format
+        exclude: |
+          (?x)^(
+              .*/graphql_codegen/.*|
+              .*/openapi_codegen/.*|
+          )$
 
   - repo: https://github.com/pylint-dev/pylint
     rev: 98942ba4126a6fe1657bad77027bcc11016d16da  # frozen: v3.3.8
     hooks:
       - id: pylint
         name: pylint
+        # exclude the template files---duplication within them will be discovered during CI of that template instantiation
+        exclude: |
+          (?x)^(
+              .*/graphql_codegen/.*|
+              .*/openapi_codegen/.*|
+              template/.*|
+          )$
         args:
           - --rcfile=./pylintrc.toml
         verbose: true
-        exclude: ^template/.* # exclude the template files---duplication within them will be discovered during CI of that template instantiation
 
   - repo: local
     hooks:
@@ -254,6 +283,11 @@ repos:
         name: pyright
         entry: bash -c "uv run pyright"
         files: '.+\.py$'
+        exclude: |
+          (?x)^(
+              .*/graphql_codegen/.*|
+              .*/openapi_codegen/.*|
+          )$
         # don't pass filenames else the command line sees them twice
         pass_filenames: false
         language: system

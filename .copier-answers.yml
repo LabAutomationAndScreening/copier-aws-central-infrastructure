@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: v0.0.69
+_commit: v0.0.74
 _src_path: gh:LabAutomationAndScreening/copier-base-template.git
 description: Managing Central Infrastructure of an AWS Organization
 python_ci_versions:
@@ -7,6 +7,7 @@ python_ci_versions:
 python_version: 3.13.2
 repo_name: copier-aws-central-infrastructure
 repo_org_name: LabAutomationAndScreening
+repo_org_name_for_copyright: Lab Automation & Screening
 ssh_port_number: 58573
 template_might_want_to_install_aws_ssm_port_forwarding_plugin: false
 template_uses_javascript: false
