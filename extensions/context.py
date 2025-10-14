@@ -31,7 +31,7 @@ class ContextUpdater(ContextHook):
         context["pydantic_version"] = "2.12.0"
         context["pyinstaller_version"] = "6.16.0"
         context["setuptools_version"] = "80.7.1"
-        context["strawberry_graphql_version"] = "0.283.3    "
+        context["strawberry_graphql_version"] = "0.283.3"
         context["fastapi_version"] = "0.119.0"
         context["fastapi_offline_version"] = "1.7.4"
         context["uvicorn_version"] = "0.37.0"
@@ -70,6 +70,7 @@ class ContextUpdater(ContextHook):
         context["vue_test_utils_version"] = "^2.4.6"
         context["nuxt_test_utils_version"] = "3.19.1"
         context["vue_eslint_parser_version"] = "^10.1.3"
+        context["happy_dom_version"] = "^20.0.0"
 
         context["gha_checkout"] = "v5.0.0"
         context["gha_setup_python"] = "v6.0.0"
