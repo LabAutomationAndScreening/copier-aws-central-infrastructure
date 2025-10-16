@@ -5,7 +5,19 @@
 [![Actions status](https://www.github.com/{% endraw %}{{ repo_org_name }}/{{ repo_name }}{% raw %}/actions/workflows/ci.yaml/badge.svg?branch=main)](https://www.github.com/{% endraw %}{{ repo_org_name }}/{{ repo_name }}{% raw %}/actions)
 [![Open in Dev Containers](https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://www.github.com/{% endraw %}{{ repo_org_name }}/{{ repo_name }}{% raw %})
 
+# Key Features
 
+## Manual artifact storage
+
+### Manual Artifacts ECR
+Any role in the org can pull from this. It exists in the Central Infrastructure account.
+Example of usage to load a tarball into it:
+```bash
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 183631337349.dkr.ecr.us-east-1.amazonaws.com
+docker load -i my-tarball.tar
+docker tag original_repo:original_tag 183631337349.dkr.ecr.us-east-1.amazonaws.com/manual-artifacts:my-app-1.0
+docker push 183631337349.dkr.ecr.us-east-1.amazonaws.com/manual-artifacts:my-app-1.0
+```
 # Usage{% endraw %}{% if manage_github_repos %}{% raw %}
 ## Managing your company's GitHub Organization
 ### Repositories
