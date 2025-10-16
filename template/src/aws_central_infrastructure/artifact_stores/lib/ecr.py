@@ -110,8 +110,10 @@ class Ecr(ComponentResource):
 
 
 def create_ecrs(*, ecr_configs: list[EcrConfig], central_infra_oidc_provider_arn: str, org_id: str):
-    ecr_configs.append(
-        EcrConfig(ecr_repo_name="manual-artifacts")
-    )  # TODO: allow uploading to this via the Manual Artifact Upload permission set
-    for config in ecr_configs:
+    for config in [
+        *ecr_configs,
+        EcrConfig(  # TODO: allow uploading to this via the Manual Artifact Upload permission set
+            ecr_repo_name="manual-artifacts"
+        ),
+    ]:
         _ = Ecr(config=config, central_infra_oidc_provider_arn=central_infra_oidc_provider_arn, org_id=org_id)
