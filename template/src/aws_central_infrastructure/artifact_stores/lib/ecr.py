@@ -30,8 +30,8 @@ class RepoEcrClaims(BaseModel):
 
 
 class EcrConfig(BaseModel):
-    git_repo_name: str
-    git_repo_org: str = CENTRAL_INFRA_GITHUB_ORG_NAME
+    git_repo_name: str | None = None
+    git_repo_org: str | None = CENTRAL_INFRA_GITHUB_ORG_NAME
     ecr_repo_name: str
     ecr_repo_namespace: str | None = None
 
@@ -76,39 +76,44 @@ class Ecr(ComponentResource):
             opts=ResourceOptions(parent=self),
             tags=common_tags_native(),
         )
-
-        _ = GithubOidcConfig(
-            aws_account_id=get_aws_account_id(),
-            repo_org=config.git_repo_org,
-            repo_name=config.git_repo_name,
-            restrictions="*",
-            role_name=f"GHA-ECR-Push-{config.ecr_repo_full_name_for_resource}",
-            role_policy=iam.RolePolicyArgs(
-                policy_name="PushToEcr",
-                policy_document=self.repository.arn.apply(
-                    lambda ecr_arn: get_policy_document(
-                        statements=[
-                            ECR_AUTH_STATEMENT,
-                            ECR_PULL_STATEMENT,
-                            GetPolicyDocumentStatementArgs(
-                                effect="Allow",
-                                sid="ImagePush",
-                                actions=[
-                                    "ecr:BatchCheckLayerAvailability",
-                                    "ecr:InitiateLayerUpload",
-                                    "ecr:UploadLayerPart",
-                                    "ecr:CompleteLayerUpload",
-                                    "ecr:PutImage",
-                                ],
-                                resources=[ecr_arn],
-                            ),
-                        ]
-                    ).json
+        if config.git_repo_org is not None and config.git_repo_name is not None:
+            _ = GithubOidcConfig(
+                aws_account_id=get_aws_account_id(),
+                repo_org=config.git_repo_org,
+                repo_name=config.git_repo_name,
+                restrictions="*",
+                role_name=f"GHA-ECR-Push-{config.ecr_repo_full_name_for_resource}",
+                role_policy=iam.RolePolicyArgs(
+                    policy_name="PushToEcr",
+                    policy_document=self.repository.arn.apply(
+                        lambda ecr_arn: get_policy_document(
+                            statements=[
+                                ECR_AUTH_STATEMENT,
+                                ECR_PULL_STATEMENT,
+                                GetPolicyDocumentStatementArgs(
+                                    effect="Allow",
+                                    sid="ImagePush",
+                                    actions=[
+                                        "ecr:BatchCheckLayerAvailability",
+                                        "ecr:InitiateLayerUpload",
+                                        "ecr:UploadLayerPart",
+                                        "ecr:CompleteLayerUpload",
+                                        "ecr:PutImage",
+                                    ],
+                                    resources=[ecr_arn],
+                                ),
+                            ]
+                        ).json
+                    ),
                 ),
-            ),
-        ).create_role(provider_arn=central_infra_oidc_provider_arn, parent=self)
+            ).create_role(provider_arn=central_infra_oidc_provider_arn, parent=self)
 
 
 def create_ecrs(*, ecr_configs: list[EcrConfig], central_infra_oidc_provider_arn: str, org_id: str):
-    for config in ecr_configs:
+    for config in [
+        *ecr_configs,
+        EcrConfig(  # TODO: allow uploading to this via the Manual Artifact Upload permission set
+            ecr_repo_name="manual-artifacts"
+        ),
+    ]:
         _ = Ecr(config=config, central_infra_oidc_provider_arn=central_infra_oidc_provider_arn, org_id=org_id)
