@@ -33,6 +33,8 @@ If an explicit parent is not provided in the configuration, the team will have t
 
 You can grant a Team permissions for a repository even if that repository was not created using this process.
 
+In addition to assigning individuals to specific teams, ensure any new member of your organization is added to the `Everyone` team (near the top of the file), which provides read access to many things and other base level access (including the ability to make pull requests to this repository).
+
 ### External Collaborators
 The file `src/aws_central_infrastructure/github_repos/collaborators.py` contains a list of external collaborators that are managed by this project. To add a new collaborator, add a new entry to the `configs` list.
 Ensure to assign them appropriate permissions (typically `push`...sometimes referred to as `write` in other contexts) for the repositories they needs access to.
