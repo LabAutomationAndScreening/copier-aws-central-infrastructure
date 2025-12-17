@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import ClassVar
 
 from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import common_tags_native
@@ -45,11 +46,17 @@ class EcrConfig(BaseModel):
 
 
 class Ecr(ComponentResource):
+    _max_ecr_name_length: ClassVar[int] = 205
+
     def __init__(self, *, config: EcrConfig, central_infra_oidc_provider_arn: str, org_id: str):
-        super().__init__("labauto:Ecr", append_resource_suffix(config.ecr_repo_full_name_for_resource), None)
+        super().__init__(
+            "labauto:Ecr",
+            append_resource_suffix(config.ecr_repo_full_name_for_resource, max_length=self._max_ecr_name_length),
+            None,
+        )
 
         self.repository = ecr.Repository(
-            append_resource_suffix(config.ecr_repo_full_name_for_resource),
+            append_resource_suffix(config.ecr_repo_full_name_for_resource, max_length=self._max_ecr_name_length),
             repository_name=config.ecr_repo_full_name_for_arn,
             empty_on_delete=True,  # note, there's an upstream bug in CloudFormation that causes this to not work as expected https://github.com/pulumi/pulumi-aws-native/issues/1270
             image_tag_mutability=ecr.RepositoryImageTagMutability.IMMUTABLE,
