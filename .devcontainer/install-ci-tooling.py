@@ -7,11 +7,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-UV_VERSION = "0.9.6"
-PNPM_VERSION = "10.20.0"
-COPIER_VERSION = "9.10.3"
-COPIER_TEMPLATE_EXTENSIONS_VERSION = "0.3.3"
-PRE_COMMIT_VERSION = "4.3.0"
+UV_VERSION = "0.9.18"
+PNPM_VERSION = "10.25.0"
+COPIER_VERSION = "==9.11.0"
+COPIER_TEMPLATE_EXTENSIONS_VERSION = "==0.3.3"
+PRE_COMMIT_VERSION = "4.5.0"
 GITHUB_WINDOWS_RUNNER_BIN_PATH = r"C:\Users\runneradmin\.local\bin"
 INSTALL_SSM_PLUGIN_BY_DEFAULT = False
 parser = argparse.ArgumentParser(description="Install CI tooling for the repo")
@@ -36,21 +36,13 @@ _ = parser.add_argument(
     default=False,
     help="Skip installing the SSM plugin for AWS CLI",
 )
-_ = parser.add_argument(
-    "--allow-uv-to-install-python",
-    action="store_true",
-    default=False,
-    help="Allow uv to install new versions of Python on the fly. This is typically only needed when instantiating the copier template.",
-)
 
 
 def main():
     args = parser.parse_args(sys.argv[1:])
     is_windows = platform.system() == "Windows"
     uv_env = dict(os.environ)
-    uv_env.update({"UV_PYTHON": args.python_version})
-    if not args.allow_uv_to_install_python:
-        uv_env.update({"UV_PYTHON_PREFERENCE": "only-system"})
+    uv_env.update({"UV_PYTHON": args.python_version, "UV_PYTHON_PREFERENCE": "only-system"})
     uv_path = ((GITHUB_WINDOWS_RUNNER_BIN_PATH + "\\") if is_windows else "") + "uv"
     if is_windows:
         pwsh = shutil.which("pwsh") or shutil.which("powershell")
@@ -84,9 +76,9 @@ def main():
                 uv_path,
                 "tool",
                 "install",
-                f"copier=={COPIER_VERSION}",
+                f"copier{COPIER_VERSION}",
                 "--with",
-                f"copier-template-extensions=={COPIER_TEMPLATE_EXTENSIONS_VERSION}",
+                f"copier-template-extensions{COPIER_TEMPLATE_EXTENSIONS_VERSION}",
             ],
             check=True,
             env=uv_env,
