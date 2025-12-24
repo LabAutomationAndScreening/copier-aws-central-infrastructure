@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from lab_auto_pulumi import AwsLogicalWorkload
@@ -14,11 +13,10 @@ from aws_central_infrastructure.iac_management.lib import CODE_ARTIFACT_SERVICE_
 from aws_central_infrastructure.iac_management.lib import PULL_FROM_CENTRAL_ECRS_STATEMENTS
 
 from ..permissions import create_permissions
+from .jinja_constants import USE_OKTA
 from .permissions import MANUAL_ARTIFACTS_UPLOAD_PERM_SET_CONTAINER
 
-OKTA_EXISTS = (Path(__file__).parent.parent.parent / "okta").exists()
-
-if OKTA_EXISTS:
+if USE_OKTA:
     from aws_central_infrastructure.okta.users import define_user_configs
 
     if TYPE_CHECKING:
@@ -52,7 +50,7 @@ def create_all_permissions(workloads_dict: dict[str, AwsLogicalWorkload]):
         ).json,
     )
     user_info_from_okta: list[UserInfo] = []
-    if OKTA_EXISTS:
+    if USE_OKTA:
         all_okta_users: list[
             OktaUserConfig  # pyright: ignore[reportPossiblyUnboundVariable] # it matches the if condition above
         ] = []
