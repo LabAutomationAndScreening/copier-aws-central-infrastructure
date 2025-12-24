@@ -56,12 +56,6 @@ MANUAL_ARTIFACTS_TAG_NAME = "manual-artifacts-bucket"
 
 def create_manual_artifacts_upload_inline_policy() -> str:
     # TODO: add permission to upload to the manual artifacts ECR
-    tag_present_condition = GetPolicyDocumentStatementConditionArgs(
-        test="Null",
-        variable=f"s3:ResourceTag/{MANUAL_ARTIFACTS_TAG_NAME}",
-        values=["false"],
-    )
-
     return get_policy_document(
         statements=[
             GetPolicyDocumentStatementArgs(
@@ -81,7 +75,13 @@ def create_manual_artifacts_upload_inline_policy() -> str:
                     "s3:ListBucketVersions",
                 ],
                 resources=["arn:aws:s3:::*"],
-                conditions=[tag_present_condition],
+                conditions=[
+                    GetPolicyDocumentStatementConditionArgs(
+                        test="Null",
+                        variable=f"s3:ResourceTag/{MANUAL_ARTIFACTS_TAG_NAME}",
+                        values=["false"],
+                    )
+                ],
             ),
             GetPolicyDocumentStatementArgs(
                 sid="RWTaggedBucketObjects",
@@ -92,8 +92,9 @@ def create_manual_artifacts_upload_inline_policy() -> str:
                     "s3:PutObject",
                     "s3:DeleteObject",
                 ],
-                resources=["arn:aws:s3:::*/*"],
-                conditions=[tag_present_condition],
+                resources=[
+                    "arn:aws:s3:::manual-artifacts-*/*"
+                ],  # TODO: see if there's some way in the bucket policy we could specify the PrincipalArn to be StrinkLike the permission set name?
             ),
         ]
     ).json
