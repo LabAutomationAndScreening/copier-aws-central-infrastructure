@@ -55,6 +55,12 @@ MANUAL_ARTIFACTS_TAG_NAME = "manual-artifacts-bucket"
 
 
 def create_manual_artifacts_bucket_access_inline_policy() -> str:
+    tag_present_condition = GetPolicyDocumentStatementConditionArgs(
+        test="Null",
+        variable=f"s3:ResourceTag/{MANUAL_ARTIFACTS_TAG_NAME}",
+        values=["false"],
+    )
+
     return get_policy_document(
         statements=[
             GetPolicyDocumentStatementArgs(
@@ -74,13 +80,7 @@ def create_manual_artifacts_bucket_access_inline_policy() -> str:
                     "s3:ListBucketVersions",
                 ],
                 resources=["arn:aws:s3:::*"],
-                conditions=[
-                    GetPolicyDocumentStatementConditionArgs(
-                        test="StringEquals",
-                        variable=f"s3:ResourceTag/{MANUAL_ARTIFACTS_TAG_NAME}",
-                        values=[""],
-                    )
-                ],
+                conditions=[tag_present_condition],
             ),
             GetPolicyDocumentStatementArgs(
                 sid="RWTaggedBucketObjects",
@@ -92,13 +92,7 @@ def create_manual_artifacts_bucket_access_inline_policy() -> str:
                     "s3:DeleteObject",
                 ],
                 resources=["arn:aws:s3:::*/*"],
-                conditions=[
-                    GetPolicyDocumentStatementConditionArgs(
-                        test="StringEquals",
-                        variable=f"s3:ResourceTag/{MANUAL_ARTIFACTS_TAG_NAME}",
-                        values=[""],
-                    )
-                ],
+                conditions=[tag_present_condition],
             ),
         ]
     ).json
