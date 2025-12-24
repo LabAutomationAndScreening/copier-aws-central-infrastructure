@@ -1,6 +1,6 @@
 """Only use this if you do not have an external Identity Provider (e.g. Okta, Microsoft)."""
 
-from .lib import User
+from lab_auto_pulumi import User
 
 
 def create_users():

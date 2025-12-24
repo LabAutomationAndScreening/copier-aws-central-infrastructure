@@ -1,6 +1,6 @@
 from lab_auto_pulumi import AwsLogicalWorkload
+from lab_auto_pulumi import all_created_users
 
-from .lib import all_created_users
 from .lib.cloud_courier_permissions import create_cloud_courier_permissions
 
 
