@@ -16,14 +16,16 @@ from ..permissions import create_permissions
 from .jinja_constants import USE_OKTA
 from .permissions import MANUAL_ARTIFACTS_UPLOAD_PERM_SET_CONTAINER
 
-if USE_OKTA:
-    from aws_central_infrastructure.okta.users import define_user_configs
-
-    if TYPE_CHECKING:
-        from aws_central_infrastructure.okta.lib.program import OktaUserConfig
-
-
 logger = logging.getLogger(__name__)
+if USE_OKTA:
+    try:
+        from aws_central_infrastructure.okta.users import define_user_configs
+
+        if TYPE_CHECKING:
+            from aws_central_infrastructure.okta.lib.program import OktaUserConfig
+    except ImportError:
+        logger.exception("Failed to import Okta modules despite USE_OKTA being True.")
+        raise
 
 
 def create_all_permissions(workloads_dict: dict[str, AwsLogicalWorkload]):
