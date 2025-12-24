@@ -54,7 +54,8 @@ class AwsSsoPermissionSetContainer(BaseModel):
 MANUAL_ARTIFACTS_TAG_NAME = "manual-artifacts-bucket"
 
 
-def create_manual_artifacts_bucket_access_inline_policy() -> str:
+def create_manual_artifacts_upload_inline_policy() -> str:
+    # TODO: add permission to upload to the manual artifacts ECR
     tag_present_condition = GetPolicyDocumentStatementConditionArgs(
         test="Null",
         variable=f"s3:ResourceTag/{MANUAL_ARTIFACTS_TAG_NAME}",
@@ -134,7 +135,7 @@ MANUAL_ARTIFACTS_UPLOAD_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
     name="ManualArtifactsBucketAccess",
     relay_state=lambda: f"https://{get_config_str('proj:aws_org_home_region')}.console.aws.amazon.com/s3/buckets?region={get_config_str('proj:aws_org_home_region')}",
     description="The ability to create and delete artifacts within the Manual Artifacts S3 bucket(s).",
-    inline_policy_callable=create_manual_artifacts_bucket_access_inline_policy,
+    inline_policy_callable=create_manual_artifacts_upload_inline_policy,
 )
 LOW_RISK_ADMIN_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
     name="LowRiskAccountAdminAccess",
