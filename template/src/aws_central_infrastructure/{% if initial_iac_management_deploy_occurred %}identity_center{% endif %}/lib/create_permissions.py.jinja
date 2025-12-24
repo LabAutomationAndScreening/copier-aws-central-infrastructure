@@ -55,5 +55,4 @@ def create_all_permissions(workloads_dict: dict[str, AwsLogicalWorkload]):
         account_info=workloads_dict["central-infra"].prod_accounts[0],
         permission_set=manual_artifacts_perm_set,
         users=[*all_users_list],
-    )
-{% endraw %}
+    ){% endraw %}
