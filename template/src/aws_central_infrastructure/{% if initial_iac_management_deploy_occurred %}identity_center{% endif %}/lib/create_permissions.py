@@ -52,9 +52,9 @@ def create_all_permissions(workloads_dict: dict[str, AwsLogicalWorkload]):
     user_info_from_okta: list[UserInfo] = []
     if USE_OKTA:
         all_okta_users: list[
-            OktaUserConfig  # pyright: ignore[reportPossiblyUnboundVariable] # it matches the if condition above
+            OktaUserConfig  # pyright: ignore # it matches the if condition above # noqa: PGH003 # we need to ignore various things depending on the copier config
         ] = []
-        define_user_configs(  # pyright: ignore[reportPossiblyUnboundVariable] # it matches the if condition above
+        define_user_configs(  # pyright: ignore # it matches the if condition above # noqa: PGH003 # we need to ignore various things depending on the copier config
             all_okta_users
         )
         user_info_from_okta.extend([UserInfo(username=user_config.username) for user_config in all_okta_users])
