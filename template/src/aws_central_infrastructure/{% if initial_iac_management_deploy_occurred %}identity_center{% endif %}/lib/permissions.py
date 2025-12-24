@@ -73,6 +73,7 @@ def create_manual_artifacts_upload_inline_policy() -> str:
                 actions=[
                     "s3:ListBucket",
                     "s3:ListBucketVersions",
+                    "s3:GetBucketVersioning",
                 ],
                 resources=["arn:aws:s3:::*"],
                 conditions=[
