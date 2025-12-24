@@ -5,7 +5,7 @@ from lab_auto_pulumi import UserInfo
 from aws_central_infrastructure.okta.users import define_user_configs
 
 if TYPE_CHECKING:
-    from aws_central_infrastructure.okta.lib.program import OktaUserConfig
+    from aws_central_infrastructure.okta.lib import OktaUserConfig
 
 
 def add_okta_user_info(user_info: list[UserInfo]):
