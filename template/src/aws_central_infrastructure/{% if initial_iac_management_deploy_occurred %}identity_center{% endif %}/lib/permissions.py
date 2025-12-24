@@ -67,12 +67,7 @@ def create_manual_artifacts_upload_inline_policy() -> str:
             GetPolicyDocumentStatementArgs(
                 sid="ListTaggedBuckets",
                 effect="Allow",
-                actions=[
-                    "s3:ListBucket",
-                    "s3:ListBucketVersions",
-                    "s3:GetBucketVersioning",
-                    "s3:GetBucketLocation",
-                ],
+                actions=["s3:ListBucket", "s3:GetBucketLocation"],
                 resources=["arn:aws:s3:::*"],
                 conditions=[
                     GetPolicyDocumentStatementConditionArgs(
@@ -83,17 +78,30 @@ def create_manual_artifacts_upload_inline_policy() -> str:
                 ],
             ),
             GetPolicyDocumentStatementArgs(
+                sid="ViewBucketVersioning",
+                effect="Allow",
+                actions=[
+                    "s3:GetBucketVersioning",  # apparently this won't work with tag-based permissions?
+                    "s3:ListBucketVersions",
+                    "s3:Get*",
+                    "s3:List*",
+                ],
+                resources=[
+                    "arn:aws:s3:::manual-artifacts-*"
+                ],  # TODO: see if there's some way in the bucket policy we could specify the PrincipalArn to be StringLike the permission set name?
+            ),
+            GetPolicyDocumentStatementArgs(
                 sid="RWTaggedBucketObjects",
                 effect="Allow",
                 actions=[
-                    "s3:GetObject",
-                    "s3:GetObjectVersion",
+                    "s3:Get*",
+                    "s3:List*",
                     "s3:PutObject",
                     "s3:DeleteObject",
                 ],
                 resources=[
                     "arn:aws:s3:::manual-artifacts-*/*"
-                ],  # TODO: see if there's some way in the bucket policy we could specify the PrincipalArn to be StrinkLike the permission set name?
+                ],  # TODO: see if there's some way in the bucket policy we could specify the PrincipalArn to be StringLike the permission set name?
             ),
         ]
     ).json
