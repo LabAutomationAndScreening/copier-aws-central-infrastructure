@@ -65,7 +65,7 @@ def create_manual_artifacts_upload_inline_policy() -> str:
                 resources=["*"],
             ),
             GetPolicyDocumentStatementArgs(
-                sid="ListTaggedBuckets",
+                sid="ListTaggedBuckets",  # TODO: figure out cloudwatch:ListMetrics so the bucket size can be viewed
                 effect="Allow",
                 actions=["s3:ListBucket", "s3:GetBucketLocation"],
                 resources=["arn:aws:s3:::*"],
