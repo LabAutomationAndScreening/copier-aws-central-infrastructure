@@ -2,9 +2,10 @@ import logging
 
 from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import common_tags
-from ephemeral_pulumi_deploy import common_tags_native
 from lab_auto_pulumi import ORG_MANAGED_SSM_PARAM_PREFIX
 from lab_auto_pulumi import AwsLogicalWorkload
+from lab_auto_pulumi import ManualArtifactsBucket
+from lab_auto_pulumi import create_worm_bucket
 from pulumi import ComponentResource
 from pulumi import ResourceOptions
 from pulumi_aws.iam import GetPolicyDocumentStatementArgs
@@ -20,71 +21,6 @@ from aws_central_infrastructure.iac_management.lib import load_workload_info
 from aws_central_infrastructure.iac_management.lib import principal_in_org_condition
 
 logger = logging.getLogger(__name__)
-
-
-def create_worm_bucket(*, resource_name: str, parent: ComponentResource) -> s3.Bucket:
-    return s3.Bucket(
-        append_resource_suffix(resource_name),
-        versioning_configuration=s3.BucketVersioningConfigurationArgs(
-            status=s3.BucketVersioningConfigurationStatus.ENABLED
-        ),
-        object_lock_enabled=True,
-        object_lock_configuration=s3.BucketObjectLockConfigurationArgs(
-            object_lock_enabled="Enabled",
-            rule=s3.BucketObjectLockRuleArgs(
-                default_retention=s3.BucketDefaultRetentionArgs(mode=s3.BucketDefaultRetentionMode.GOVERNANCE, years=10)
-            ),
-        ),
-        opts=ResourceOptions(parent=parent),
-        tags=common_tags_native(),
-    )
-
-
-class ManualArtifactsBucket(ComponentResource):
-    def __init__(
-        self,
-    ):
-        super().__init__("labauto:ManualArtifactsBucket", append_resource_suffix(), None)
-        # These artifacts are deployed to machines and devices. It's too much of a security risk to let people overwrite them, so setting up WORM.
-        self.bucket = create_worm_bucket(resource_name="manual-artifacts", parent=self)
-        org_id = get_organization().id
-        _ = s3.BucketPolicy(
-            append_resource_suffix("manual-artifacts"),
-            opts=ResourceOptions(parent=self, delete_before_replace=True),
-            bucket=self.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright somehow thinks a bucket name can be Output[None], which doesn't seem possible
-            policy_document=self.bucket.bucket_name.apply(
-                lambda bucket_name: get_policy_document(
-                    statements=[
-                        GetPolicyDocumentStatementArgs(
-                            effect="Allow",
-                            actions=["s3:PutObject", "s3:GetObject"],
-                            principals=[
-                                GetPolicyDocumentStatementPrincipalArgs(
-                                    type="*",  # TODO: consider locking this down to just people for PutObject
-                                    identifiers=[
-                                        "*"
-                                    ],  # Anyone can do anything with this bucket if they themselves have been granted permission. WORM model keeps files secure.
-                                )
-                            ],
-                            resources=[f"arn:aws:s3:::{bucket_name}/*"],
-                            conditions=[principal_in_org_condition(org_id)],
-                        ),
-                        GetPolicyDocumentStatementArgs(
-                            effect="Allow",
-                            actions=["s3:ListBucket"],
-                            principals=[
-                                GetPolicyDocumentStatementPrincipalArgs(
-                                    type="*",
-                                    identifiers=["*"],
-                                )
-                            ],
-                            resources=[f"arn:aws:s3:::{bucket_name}"],
-                            conditions=[principal_in_org_condition(org_id)],
-                        ),
-                    ]
-                ).json
-            ),
-        )
 
 
 class DistributorPackagesBucket(ComponentResource):

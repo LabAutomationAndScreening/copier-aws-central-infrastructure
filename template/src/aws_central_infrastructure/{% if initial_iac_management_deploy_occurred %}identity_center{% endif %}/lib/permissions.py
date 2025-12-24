@@ -51,6 +51,60 @@ class AwsSsoPermissionSetContainer(BaseModel):
         return self._permission_set
 
 
+MANUAL_ARTIFACTS_TAG_NAME = "manual-artifacts-bucket"
+
+
+def create_manual_artifacts_bucket_access_inline_policy() -> str:
+    return get_policy_document(
+        statements=[
+            GetPolicyDocumentStatementArgs(
+                sid="ListAllBuckets",
+                effect="Allow",
+                actions=[
+                    "s3:ListAllMyBuckets",
+                    "s3:GetBucketLocation",
+                ],
+                resources=["*"],
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="ListTaggedBuckets",
+                effect="Allow",
+                actions=[
+                    "s3:ListBucket",
+                    "s3:ListBucketVersions",
+                ],
+                resources=["arn:aws:s3:::*"],
+                conditions=[
+                    GetPolicyDocumentStatementConditionArgs(
+                        test="StringEquals",
+                        variable=f"s3:ResourceTag/{MANUAL_ARTIFACTS_TAG_NAME}",
+                        values=[""],
+                    )
+                ],
+            ),
+            GetPolicyDocumentStatementArgs(
+                sid="RWTaggedBucketObjects",
+                effect="Allow",
+                actions=[
+                    "s3:GetObject",
+                    "s3:GetObjectVersion",
+                    "s3:PutObject",
+                    "s3:DeleteObject",
+                    "s3:DeleteObjectVersion",
+                ],
+                resources=["arn:aws:s3:::*/*"],
+                conditions=[
+                    GetPolicyDocumentStatementConditionArgs(
+                        test="StringEquals",
+                        variable=f"s3:ResourceTag/{MANUAL_ARTIFACTS_TAG_NAME}",
+                        values=[""],
+                    )
+                ],
+            ),
+        ]
+    ).json
+
+
 def create_manual_secrets_entry_inline_policy() -> str:
     return get_policy_document(
         statements=[
@@ -77,12 +131,17 @@ def create_manual_secrets_entry_inline_policy() -> str:
     ).json
 
 
-MANUAL_SECRETS_ENTRY_PERM_SET_CONTAINER = (
-    AwsSsoPermissionSetContainer(  # TODO: set relay state to SecretsManager landing page
-        name="ManualSecretsEntry",
-        description="The ability to manually update secrets into the secrets manager.",
-        inline_policy_callable=create_manual_secrets_entry_inline_policy,
-    )
+MANUAL_SECRETS_ENTRY_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
+    name="ManualSecretsEntry",
+    relay_state=lambda: f"https://{get_config_str('proj:aws_org_home_region')}.console.aws.amazon.com/secretsmanager/listsecrets?region={get_config_str('proj:aws_org_home_region')}",
+    description="The ability to manually update secrets into the secrets manager.",
+    inline_policy_callable=create_manual_secrets_entry_inline_policy,
+)
+MANUAL_ARTIFACTS_UPLOAD_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
+    name="ManualArtifactsBucketAccess",
+    relay_state=lambda: f"https://{get_config_str('proj:aws_org_home_region')}.console.aws.amazon.com/s3/buckets?region={get_config_str('proj:aws_org_home_region')}",
+    description="The ability to create and delete artifacts within the Manual Artifacts S3 bucket(s).",
+    inline_policy_callable=create_manual_artifacts_bucket_access_inline_policy,
 )
 LOW_RISK_ADMIN_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
     name="LowRiskAccountAdminAccess",
@@ -268,6 +327,7 @@ EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aw
 
 ALL_PERM_SET_CONTAINERS = (
     MANUAL_SECRETS_ENTRY_PERM_SET_CONTAINER,
+    MANUAL_ARTIFACTS_UPLOAD_PERM_SET_CONTAINER,
     LOW_RISK_ADMIN_PERM_SET_CONTAINER,
     VIEW_ONLY_PERM_SET_CONTAINER,
     EC2_SSO_PER_SET_CONTAINER,

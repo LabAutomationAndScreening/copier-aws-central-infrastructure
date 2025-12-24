@@ -6,6 +6,7 @@ from lab_auto_pulumi import all_created_users
 from .lib import create_read_state_inline_policy
 from .permissions import EC2_SSO_PER_SET_CONTAINER
 from .permissions import LOW_RISK_ADMIN_PERM_SET_CONTAINER
+from .permissions import MANUAL_ARTIFACTS_UPLOAD_PERM_SET_CONTAINER
 from .permissions import MANUAL_SECRETS_ENTRY_PERM_SET_CONTAINER
 from .permissions import VIEW_ONLY_PERM_SET_CONTAINER
 from .permissions import AwsLogicalWorkload
