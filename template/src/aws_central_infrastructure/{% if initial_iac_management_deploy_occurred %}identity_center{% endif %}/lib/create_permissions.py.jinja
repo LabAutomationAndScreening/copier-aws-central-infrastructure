@@ -43,20 +43,17 @@ def create_all_permissions(workloads_dict: dict[str, AwsLogicalWorkload]):
         ).json,
     )
 
-    _ = (
-        AwsSsoPermissionSetAccountAssignments(
-            account_info=workloads_dict["central-infra"].prod_accounts[0],
-            permission_set=core_infra_base_access,
-            users=[
-                *all_users_list,
-            ],
-        ),
+    _ = AwsSsoPermissionSetAccountAssignments(
+        account_info=workloads_dict["central-infra"].prod_accounts[0],
+        permission_set=core_infra_base_access,
+        users=[
+            *all_users_list,
+        ],
     )
     manual_artifacts_perm_set = MANUAL_ARTIFACTS_UPLOAD_PERM_SET_CONTAINER.permission_set
-    _ = (
-        AwsSsoPermissionSetAccountAssignments(
-            account_info=workloads_dict["central-infra"].prod_accounts[0],
-            permission_set=manual_artifacts_perm_set,
-            users=[*all_users_list],
-        ),
-    ){% endraw %}
+    _ = AwsSsoPermissionSetAccountAssignments(
+        account_info=workloads_dict["central-infra"].prod_accounts[0],
+        permission_set=manual_artifacts_perm_set,
+        users=[*all_users_list],
+    )
+{% endraw %}
