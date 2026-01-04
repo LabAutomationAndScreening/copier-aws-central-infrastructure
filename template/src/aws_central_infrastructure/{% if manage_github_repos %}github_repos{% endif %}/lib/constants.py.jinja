@@ -3,4 +3,5 @@ GITHUB_TOKENS_CREATED = {% endraw %}{{ 'True' if github_tokens_created else 'Fal
 USE_REPO_SECRET_FOR_GITHUB_IAC_TOKENS = {% endraw %}{{ 'True' if use_repo_secret_for_github_iac_tokens else 'False'}}{% raw %}
 AWS_ORGANIZATION_REPO_NAME = "{% endraw %}{{ aws_organization_repo_name }}{% raw %}"
 ACTIVELY_IMPORT_AWS_ORG_REPOS = {% endraw %}{{ 'True' if import_github_aws_org_repos and not finished_importing_github_aws_org_repos else 'False' }}{% raw %}
-AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED = {% endraw %}{{ 'True' if finished_importing_github_aws_org_repos else 'False' }}{% raw %}{% endraw %}
+AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED = {% endraw %}{{ 'True' if finished_importing_github_aws_org_repos else 'False' }}{% raw %}
+ALLOW_ADMIN_BYPASS_FOR_AWS_ORG_REPOS = {% endraw %}{{ 'True' if allow_admin_rule_bypass_for_github_aws_org_repos else 'False' }}{% raw %}{% endraw %}
