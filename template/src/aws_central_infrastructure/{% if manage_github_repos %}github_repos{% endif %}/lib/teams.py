@@ -16,6 +16,7 @@ from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_GITHUB_O
 from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_REPO_NAME
 
 from .constants import AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED
+from .constants import AWS_ORGANIZATION_REPO_NAME
 
 type RepositoryName = str
 type GithubRepositoryPermission = Literal["pull", "triage", "push", "maintain", "admin"]
@@ -127,10 +128,7 @@ def fully_configure_teams(
     root_team.maintainers.extend(org_members.org_admins)
     root_team.members.extend(org_members.everyone)
     if AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED:
-        for repo_name in (
-            CENTRAL_INFRA_REPO_NAME,
-            "aws-organization",  # TODO: parametrize this, don't hardcode the repo name
-        ):
+        for repo_name in ("concept-generation", CENTRAL_INFRA_REPO_NAME, AWS_ORGANIZATION_REPO_NAME):
             root_team.repo_permissions[repo_name] = "push"
 
 
