@@ -170,6 +170,12 @@ finished_importing_github_aws_org_repos:
     default: no
     when: "{{ import_github_aws_org_repos }}"
 
+allow_admin_rule_bypass_for_github_aws_org_repos:
+    type: bool
+    help: Do you want to allow GitHub Organization admins to bypass the branch protection rules for the AWS-Organization and AWS-Central-Infrastructure repositories?
+    default: no
+    when: "{{ finished_importing_github_aws_org_repos }}"
+
 aws_organization_repo_name:
     type: str
     help: What is the name of the Github repository used to manage your AWS Organization?

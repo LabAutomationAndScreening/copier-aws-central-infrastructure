@@ -24,6 +24,7 @@ from aws_central_infrastructure.artifact_stores.internal_packages import create_
 from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_REPO_NAME
 
 from .constants import ACTIVELY_IMPORT_AWS_ORG_REPOS
+from .constants import ALLOW_ADMIN_BYPASS_FOR_AWS_ORG_REPOS
 from .constants import AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED
 from .constants import AWS_ORGANIZATION_REPO_NAME
 
@@ -224,7 +225,7 @@ def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Pro
                 GithubRepoConfig(
                     name=CENTRAL_INFRA_REPO_NAME,
                     description="Manage Central/Core Infrastructure for the AWS Organization",
-                    org_admin_rule_bypass=True,
+                    org_admin_rule_bypass=ALLOW_ADMIN_BYPASS_FOR_AWS_ORG_REPOS,
                     import_existing_repo_using_config=None
                     if AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED
                     else default_imported_repo_config,
@@ -232,7 +233,7 @@ def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Pro
                 GithubRepoConfig(
                     name=AWS_ORGANIZATION_REPO_NAME,
                     description="Managing the company's AWS Organization",
-                    org_admin_rule_bypass=True,
+                    org_admin_rule_bypass=ALLOW_ADMIN_BYPASS_FOR_AWS_ORG_REPOS,
                     import_existing_repo_using_config=None
                     if AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED
                     else default_imported_repo_config,

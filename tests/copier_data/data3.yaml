@@ -36,4 +36,5 @@ github_tokens_created: false
 aws_organization_repo_name: my-aws-organization
 import_github_aws_org_repos: true
 finished_importing_github_aws_org_repos: false
+allow_admin_rule_bypass_for_github_aws_org_repos: false
 create_private_subnet: false
