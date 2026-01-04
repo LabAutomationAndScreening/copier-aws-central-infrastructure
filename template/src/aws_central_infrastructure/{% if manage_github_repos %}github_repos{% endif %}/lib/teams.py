@@ -128,7 +128,7 @@ def fully_configure_teams(
     root_team.maintainers.extend(org_members.org_admins)
     root_team.members.extend(org_members.everyone)
     if AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED:
-        for repo_name in ("concept-generation", CENTRAL_INFRA_REPO_NAME, AWS_ORGANIZATION_REPO_NAME):
+        for repo_name in (CENTRAL_INFRA_REPO_NAME, AWS_ORGANIZATION_REPO_NAME):
             root_team.repo_permissions[repo_name] = "push"
 
 
