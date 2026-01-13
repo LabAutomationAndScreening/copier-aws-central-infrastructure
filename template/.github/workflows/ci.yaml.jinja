@@ -20,8 +20,12 @@ jobs:
     permissions:
       contents: write # needed updating dependabot branches
 
+  check-skip-duplicate:
+    uses: ./.github/actions/check-skip-duplicates
+
   lint:
-    needs: [ get-values ]
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    needs: [ get-values, check-skip-duplicate ]
     name: Pre-commit
     uses: ./.github/workflows/pre-commit.yaml
     permissions:
@@ -31,6 +35,8 @@ jobs:
       python-version: {% endraw %}{{ python_version }}{% raw %}
 
   unit-test:
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    needs: [ lint, check-skip-duplicate ]
     needs: [ lint ]
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     steps:
@@ -46,11 +52,13 @@ jobs:
         run: uv run pytest tests/unit --cov-report=xml --durations=5
 
   iac-management-pulumi:
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
-    needs: [ unit-test ]
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    needs: [ unit-test, check-skip-duplicate ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
@@ -64,11 +72,12 @@ jobs:
       AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
 {% endraw %}{% if manage_github_repos %}{% raw %}
   github-repos-pulumi:
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
-    needs: [ unit-test ]
+    needs: [ unit-test, check-skip-duplicate ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
@@ -83,12 +92,14 @@ jobs:
       ADDITIONAL_MUTEX_SUFFIX: github{% endraw %}{% if use_repo_secret_for_github_iac_tokens %}{% raw %}
     secrets:
       iac-github-api-tokens: ${{ secrets.IAC_GITHUB_API_TOKENS }}{% endraw %}{% endif %}{% endif %}{% if manage_okta %}{% raw %}
+
   okta-pulumi:
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
-    needs: [ unit-test ]
+    needs: [ unit-test, check-skip-duplicate ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
@@ -103,11 +114,12 @@ jobs:
       ADDITIONAL_MUTEX_SUFFIX: okta{% endraw %}{% endif %}{% raw %}
 
   central-networking-pulumi:
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
-    needs: [ iac-management-pulumi ]
+    needs: [ iac-management-pulumi, check-skip-duplicate ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
@@ -125,7 +137,7 @@ jobs:
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
-    needs: [ iac-management-pulumi, central-networking-pulumi ] # spinning up AMI builders depends on central-networking
+    needs: [ iac-management-pulumi, central-networking-pulumi, check-skip-duplicate ] # spinning up AMI builders depends on central-networking
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
@@ -140,11 +152,12 @@ jobs:
 
 
 {% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}  identity-center-pulumi:
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
-    needs: [ iac-management-pulumi, artifact-stores-pulumi ] # Identity Center depends on outputs from the Artifact Stores stack to set up permission sets
+    needs: [ iac-management-pulumi, artifact-stores-pulumi, check-skip-duplicate ] # Identity Center depends on outputs from the Artifact Stores stack to set up permission sets
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
       PULUMI_STACK_NAME: prod
@@ -163,6 +176,7 @@ jobs:
       statuses: write # needed for updating status on Dependabot PRs
     needs:
       - get-values
+      - check-skip-duplicate
       - iac-management-pulumi
       - artifact-stores-pulumi
       - central-networking-pulumi{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}
@@ -172,9 +186,20 @@ jobs:
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.iac-management-pulumi.result != 'success' || needs.artifact-stores-pulumi.result != 'success' || needs.central-networking-pulumi.result != 'success'{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %} || needs.identity-center-pulumi.result != 'success'{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %} || needs.github-repos-pulumi.result != 'success'{% endraw %}{% endif %}{% if manage_okta %}{% raw %} || needs.okta-pulumi.result != 'success'{% endraw %}{% endif %}{% raw %}
         run: |
-          exit 1
+          failure_pattern="^(failure|cancelled)$"
+
+          if [[ "${{ needs.check-skip-duplicate.result }}" =~ $failure_pattern ]] ||
+             [[ "${{ needs.iac-management-pulumi.result }}" =~ $failure_pattern ]] ||
+             [[ "${{ needs.artifact-stores-pulumi.result }}" =~ $failure_pattern ]] ||
+             [[ "${{ needs.central-networking-pulumi.result }}" =~ $failure_pattern ]] ||
+             [[ "${{ needs.identity-center-pulumi.result }}" =~ $failure_pattern ]] ||
+             [[ "${{ needs.github-repos-pulumi.result }}" =~ $failure_pattern ]] ||
+             [[ "${{ needs.okta-pulumi.result }}" =~ $failure_pattern ]]; then
+            echo "❌ One or more jobs failed or were cancelled"
+            exit 1
+          fi
+          echo "✅ All jobs completed successfully or were skipped"
       - name: Mark updated Dependabot commit of devcontainer hash as succeeded
         if: needs.get-values.outputs.dependabot-commit-created == 'true'
         env:
