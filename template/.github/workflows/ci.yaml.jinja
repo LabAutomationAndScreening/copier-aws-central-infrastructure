@@ -21,7 +21,10 @@ jobs:
       contents: write # needed updating dependabot branches
 
   check-skip-duplicate:
-    uses: ./.github/actions/check-skip-duplicates
+    runs-on: ubuntu-24.04
+    steps:
+      - id: check
+        uses: ./.github/actions/check-skip-duplicates
 
   lint:
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
