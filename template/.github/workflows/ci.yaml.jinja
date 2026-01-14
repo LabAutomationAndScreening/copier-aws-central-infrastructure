@@ -126,8 +126,8 @@ jobs:
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
       AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
-      ADDITIONAL_MUTEX_SUFFIX: okta{% endraw %}{% endif %}{% raw %}
-      SHOW_PREVIEW_COMMENT_ON_PR: ${{ github.event_name == 'pull_request' }}
+      ADDITIONAL_MUTEX_SUFFIX: okta
+      SHOW_PREVIEW_COMMENT_ON_PR: ${{ github.event_name == 'pull_request' }}{% endraw %}{% endif %}{% raw %}
 
   central-networking-pulumi:
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
