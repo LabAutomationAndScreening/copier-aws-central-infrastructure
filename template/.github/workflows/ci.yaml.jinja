@@ -170,9 +170,9 @@ jobs:
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
       AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
       SHOW_PREVIEW_COMMENT_ON_PR: ${{ github.event_name == 'pull_request' }}
+{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}
 
-
-{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}  identity-center-pulumi:
+  identity-center-pulumi:
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
@@ -190,8 +190,8 @@ jobs:
       PREVIEW_ROLE_NAME: InfraPreview--{% endraw %}{{ repo_name }}{% raw %}--identity-center
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}--identity-center
-      AWS_ACCOUNT_ID: "{% endraw %}{{ identity_center_production_account_id }}{% raw %}"{% endraw %}{% endif %}{% raw %}
-      SHOW_PREVIEW_COMMENT_ON_PR: ${{ github.event_name == 'pull_request' }}
+      AWS_ACCOUNT_ID: "{% endraw %}{{ identity_center_production_account_id }}{% raw %}"
+      SHOW_PREVIEW_COMMENT_ON_PR: ${{ github.event_name == 'pull_request' }}{% endraw %}{% endif %}{% raw %}
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
