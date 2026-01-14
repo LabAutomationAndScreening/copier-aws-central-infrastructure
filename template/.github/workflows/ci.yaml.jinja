@@ -56,7 +56,7 @@ jobs:
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
-    if: needs.check-skip-duplicate.outputs.should-run == 'true'
+      pull-requests: write # needed to post the preview on the PR as a comment
     needs: [ unit-test, check-skip-duplicate ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -69,6 +69,7 @@ jobs:
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
       AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
+      SHOW_PREVIEW_COMMENT_ON_PR: ${{ github.event_name == 'pull_request' }}
 {% endraw %}{% if manage_github_repos %}{% raw %}
   github-repos-pulumi:
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
@@ -76,6 +77,7 @@ jobs:
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
+      pull-requests: write # needed to post the preview on the PR as a comment
     needs: [ unit-test, check-skip-duplicate ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -89,6 +91,7 @@ jobs:
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
       AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
       ADDITIONAL_MUTEX_SUFFIX: github{% endraw %}{% if use_repo_secret_for_github_iac_tokens %}{% raw %}
+      SHOW_PREVIEW_COMMENT_ON_PR: ${{ github.event_name == 'pull_request' }}
     secrets:
       iac-github-api-tokens: ${{ secrets.IAC_GITHUB_API_TOKENS }}{% endraw %}{% endif %}{% endif %}{% if manage_okta %}{% raw %}
 
@@ -98,6 +101,7 @@ jobs:
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
+      pull-requests: write # needed to post the preview on the PR as a comment
     needs: [ unit-test, check-skip-duplicate ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -111,6 +115,7 @@ jobs:
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
       AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
       ADDITIONAL_MUTEX_SUFFIX: okta{% endraw %}{% endif %}{% raw %}
+      SHOW_PREVIEW_COMMENT_ON_PR: ${{ github.event_name == 'pull_request' }}
 
   central-networking-pulumi:
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
@@ -118,6 +123,7 @@ jobs:
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
+      pull-requests: write # needed to post the preview on the PR as a comment
     needs: [ iac-management-pulumi, check-skip-duplicate ]
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -130,12 +136,14 @@ jobs:
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
       AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
+      SHOW_PREVIEW_COMMENT_ON_PR: ${{ github.event_name == 'pull_request' }}
 
   artifact-stores-pulumi:
     uses: ./.github/workflows/pulumi-aws.yml
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
+      pull-requests: write # needed to post the preview on the PR as a comment
     needs: [ iac-management-pulumi, central-networking-pulumi, check-skip-duplicate ] # spinning up AMI builders depends on central-networking
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -148,6 +156,7 @@ jobs:
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}
       AWS_ACCOUNT_ID: "{% endraw %}{{ aws_production_account_id }}{% raw %}"
+      SHOW_PREVIEW_COMMENT_ON_PR: ${{ github.event_name == 'pull_request' }}
 
 
 {% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}  identity-center-pulumi:
@@ -156,6 +165,7 @@ jobs:
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
+      pull-requests: write # needed to post the preview on the PR as a comment
     needs: [ iac-management-pulumi, artifact-stores-pulumi, check-skip-duplicate ] # Identity Center depends on outputs from the Artifact Stores stack to set up permission sets
     with:
       AWS_REGION: {% endraw %}{{ aws_org_home_region }}{% raw %}
@@ -168,6 +178,7 @@ jobs:
       PULUMI_UP: ${{ github.ref == 'refs/heads/main' }}
       PULUMI_UP_ROLE_NAME: InfraDeploy--{% endraw %}{{ repo_name }}{% raw %}--identity-center
       AWS_ACCOUNT_ID: "{% endraw %}{{ identity_center_production_account_id }}{% raw %}"{% endraw %}{% endif %}{% raw %}
+      SHOW_PREVIEW_COMMENT_ON_PR: ${{ github.event_name == 'pull_request' }}
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
