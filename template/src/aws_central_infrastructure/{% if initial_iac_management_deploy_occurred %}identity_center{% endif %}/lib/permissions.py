@@ -14,7 +14,7 @@ from pulumi_aws.iam import get_policy_document
 from pydantic import BaseModel
 from pydantic import Field
 
-from .lib import create_read_state_inline_policy
+from .lib import create_inline_view_only_policy
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +168,7 @@ VIEW_ONLY_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
         # TODO: figure out how to add back in "AmazonAppStreamReadOnlyAccess",  # look at the details of stack/fleet information to troubleshoot any issues
         # TODO: "CloudWatchEventsReadOnlyAccess",  # see information about event rules and patterns
     ],
-    inline_policy_callable=create_read_state_inline_policy,
+    inline_policy_callable=create_inline_view_only_policy,
 )
 
 EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aws.amazon.com/blogs/security/how-to-enable-secure-seamless-single-sign-on-to-amazon-ec2-windows-instances-with-aws-sso/
