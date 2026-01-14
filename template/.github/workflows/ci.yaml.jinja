@@ -22,7 +22,16 @@ jobs:
 
   check-skip-duplicate:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read # needed to check if PR exists for current branch
+    outputs:
+      should-run: ${{ steps.check.outputs.should-run}}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6.0.1
+        with:
+          persist-credentials: false
       - id: check
         uses: ./.github/actions/check-skip-duplicates
 
