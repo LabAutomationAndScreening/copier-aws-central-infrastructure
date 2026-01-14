@@ -26,10 +26,10 @@ jobs:
       contents: read
       pull-requests: read # needed to check if PR exists for current branch
     outputs:
-      should-run: ${{ steps.check.outputs.should-run}}
+      should-run: ${{ steps.check.outputs.should-run }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
         with:
           persist-credentials: false
       - id: check
@@ -215,10 +215,10 @@ jobs:
           if [[ "${{ needs.check-skip-duplicate.result }}" =~ $failure_pattern ]] ||
              [[ "${{ needs.iac-management-pulumi.result }}" =~ $failure_pattern ]] ||
              [[ "${{ needs.artifact-stores-pulumi.result }}" =~ $failure_pattern ]] ||
-             [[ "${{ needs.central-networking-pulumi.result }}" =~ $failure_pattern ]] ||
-             [[ "${{ needs.identity-center-pulumi.result }}" =~ $failure_pattern ]] ||
-             [[ "${{ needs.github-repos-pulumi.result }}" =~ $failure_pattern ]] ||
-             [[ "${{ needs.okta-pulumi.result }}" =~ $failure_pattern ]]; then
+             [[ "${{ needs.central-networking-pulumi.result }}" =~ $failure_pattern ]]{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %} ||
+             [[ "${{ needs.identity-center-pulumi.result }}" =~ $failure_pattern ]]{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %} ||
+             [[ "${{ needs.github-repos-pulumi.result }}" =~ $failure_pattern ]]{% endraw %}{% endif %}{% if manage_okta %}{% raw %} ||
+             [[ "${{ needs.okta-pulumi.result }}" =~ $failure_pattern ]]{% endraw %}{% endif %}{% raw %}; then
             echo "❌ One or more jobs failed or were cancelled"
             exit 1
           fi
