@@ -1,4 +1,4 @@
-from .lib import create_read_state_inline_policy
+from .lib import create_inline_view_only_policy
 from .permissions import EC2_SSO_PER_SET_CONTAINER
 from .permissions import LOW_RISK_ADMIN_PERM_SET_CONTAINER
 from .permissions import MANUAL_ARTIFACTS_UPLOAD_PERM_SET_CONTAINER
