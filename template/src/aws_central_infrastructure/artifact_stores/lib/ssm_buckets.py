@@ -42,51 +42,53 @@ class DistributorPackagesBucket(ComponentResource):
             opts=ResourceOptions(parent=self, delete_before_replace=True),
             bucket=self.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright somehow thinks a bucket name can be Output[None], which doesn't seem possible
             policy_document=self.bucket.bucket_name.apply(
-                lambda bucket_name: get_policy_document(
-                    statements=[
-                        GetPolicyDocumentStatementArgs(
-                            effect="Allow",
-                            actions=["s3:PutObject", "s3:GetObject"],
-                            principals=[
-                                GetPolicyDocumentStatementPrincipalArgs(
-                                    type="AWS",
-                                    identifiers=["*"],
-                                )
-                            ],
-                            conditions=[
-                                GetPolicyDocumentStatementConditionArgs(
-                                    variable="aws:PrincipalArn",
-                                    test="StringLike",
-                                    values=principal_arns,
-                                ),
-                                principal_in_org_condition(org_id),
-                            ],
-                            resources=[f"arn:aws:s3:::{bucket_name}/${{aws:PrincipalAccount}}/*"],
-                        ),
-                        GetPolicyDocumentStatementArgs(
-                            effect="Allow",
-                            actions=["s3:ListBucket"],
-                            principals=[
-                                GetPolicyDocumentStatementPrincipalArgs(
-                                    type="AWS",
-                                    identifiers=["*"],
-                                )
-                            ],
-                            resources=[f"arn:aws:s3:::{bucket_name}"],
-                            conditions=[
-                                GetPolicyDocumentStatementConditionArgs(
-                                    variable="aws:PrincipalArn",
-                                    test="StringLike",
-                                    values=principal_arns,
-                                ),
-                                principal_in_org_condition(org_id),
-                                GetPolicyDocumentStatementConditionArgs(
-                                    test="StringLike", variable="s3:prefix", values=["${aws:PrincipalAccount}/*"]
-                                ),
-                            ],
-                        ),
-                    ]
-                ).json
+                lambda bucket_name: (
+                    get_policy_document(
+                        statements=[
+                            GetPolicyDocumentStatementArgs(
+                                effect="Allow",
+                                actions=["s3:PutObject", "s3:GetObject"],
+                                principals=[
+                                    GetPolicyDocumentStatementPrincipalArgs(
+                                        type="AWS",
+                                        identifiers=["*"],
+                                    )
+                                ],
+                                conditions=[
+                                    GetPolicyDocumentStatementConditionArgs(
+                                        variable="aws:PrincipalArn",
+                                        test="StringLike",
+                                        values=principal_arns,
+                                    ),
+                                    principal_in_org_condition(org_id),
+                                ],
+                                resources=[f"arn:aws:s3:::{bucket_name}/${{aws:PrincipalAccount}}/*"],
+                            ),
+                            GetPolicyDocumentStatementArgs(
+                                effect="Allow",
+                                actions=["s3:ListBucket"],
+                                principals=[
+                                    GetPolicyDocumentStatementPrincipalArgs(
+                                        type="AWS",
+                                        identifiers=["*"],
+                                    )
+                                ],
+                                resources=[f"arn:aws:s3:::{bucket_name}"],
+                                conditions=[
+                                    GetPolicyDocumentStatementConditionArgs(
+                                        variable="aws:PrincipalArn",
+                                        test="StringLike",
+                                        values=principal_arns,
+                                    ),
+                                    principal_in_org_condition(org_id),
+                                    GetPolicyDocumentStatementConditionArgs(
+                                        test="StringLike", variable="s3:prefix", values=["${aws:PrincipalAccount}/*"]
+                                    ),
+                                ],
+                            ),
+                        ]
+                    ).json
+                )
             ),
         )
 

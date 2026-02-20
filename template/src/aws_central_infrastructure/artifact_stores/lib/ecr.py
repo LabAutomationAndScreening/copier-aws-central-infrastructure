@@ -93,24 +93,26 @@ class Ecr(ComponentResource):
                 role_policy=iam.RolePolicyArgs(
                     policy_name="PushToEcr",
                     policy_document=self.repository.arn.apply(
-                        lambda ecr_arn: get_policy_document(
-                            statements=[
-                                ECR_AUTH_STATEMENT,
-                                ECR_PULL_STATEMENT,
-                                GetPolicyDocumentStatementArgs(
-                                    effect="Allow",
-                                    sid="ImagePush",
-                                    actions=[
-                                        "ecr:BatchCheckLayerAvailability",
-                                        "ecr:InitiateLayerUpload",
-                                        "ecr:UploadLayerPart",
-                                        "ecr:CompleteLayerUpload",
-                                        "ecr:PutImage",
-                                    ],
-                                    resources=[ecr_arn],
-                                ),
-                            ]
-                        ).json
+                        lambda ecr_arn: (
+                            get_policy_document(
+                                statements=[
+                                    ECR_AUTH_STATEMENT,
+                                    ECR_PULL_STATEMENT,
+                                    GetPolicyDocumentStatementArgs(
+                                        effect="Allow",
+                                        sid="ImagePush",
+                                        actions=[
+                                            "ecr:BatchCheckLayerAvailability",
+                                            "ecr:InitiateLayerUpload",
+                                            "ecr:UploadLayerPart",
+                                            "ecr:CompleteLayerUpload",
+                                            "ecr:PutImage",
+                                        ],
+                                        resources=[ecr_arn],
+                                    ),
+                                ]
+                            ).json
+                        )
                     ),
                 ),
             ).create_role(provider_arn=central_infra_oidc_provider_arn, parent=self)
