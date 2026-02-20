@@ -168,8 +168,7 @@ class GithubRepo(ComponentResource):
         _ = RepositoryRuleset(
             append_resource_suffix(config.name, max_length=150),
             bypass_actors=bypass_actors
-            if bypass_actors
-            else None,  # supplying an empty list seems to cause problems, so explicitly pass None if no bypass
+            or None,  # supplying an empty list seems to cause problems, so explicitly pass None if no bypass
             name="Protect Default Branch",
             repository=config.name,
             target="branch",
