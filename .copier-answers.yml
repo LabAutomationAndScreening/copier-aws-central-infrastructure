@@ -1,11 +1,11 @@
 # Changes here will be overwritten by Copier
-_commit: v0.0.94
+_commit: v0.0.97
 _src_path: gh:LabAutomationAndScreening/copier-base-template.git
 description: Managing Central Infrastructure of an AWS Organization
 install_claude_cli: false
 python_ci_versions:
-- 3.13.2
-python_version: 3.13.2
+- 3.13.9
+python_version: 3.13.9
 repo_name: copier-aws-central-infrastructure
 repo_org_name: LabAutomationAndScreening
 repo_org_name_for_copyright: Lab Automation & Screening
