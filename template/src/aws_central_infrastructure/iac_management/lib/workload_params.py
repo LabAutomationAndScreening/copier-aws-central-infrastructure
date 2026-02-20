@@ -52,7 +52,7 @@ def load_workload_info(
         response = ssm_client.describe_parameters(
             ParameterFilters=[{"Key": "Name", "Option": "BeginsWith", "Values": [WORKLOAD_INFO_SSM_PARAM_PREFIX]}],
             MaxResults=50,  # AWS allows up to 50 results per call
-            NextToken=next_token if next_token else "",
+            NextToken=next_token or "",
         )
 
         # Add parameters from this page

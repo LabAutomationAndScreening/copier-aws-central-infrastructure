@@ -188,7 +188,9 @@ class SharedSubnet(ComponentResource):
             append_resource_suffix(self.resource_base_name, max_length=150),
             resource_arns=[
                 subnet.subnet_id.apply(
-                    lambda subnet_id: f"arn:aws:ec2:{pulumi_aws.config.region}:{get_aws_account_id()}:subnet/{subnet_id}"
+                    lambda subnet_id: (
+                        f"arn:aws:ec2:{pulumi_aws.config.region}:{get_aws_account_id()}:subnet/{subnet_id}"
+                    )
                 )
             ],
             principals=principals,

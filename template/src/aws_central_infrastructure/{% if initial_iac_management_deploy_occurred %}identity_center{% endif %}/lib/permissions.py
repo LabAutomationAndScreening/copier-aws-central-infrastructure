@@ -135,13 +135,17 @@ def create_manual_secrets_entry_inline_policy() -> str:
 
 MANUAL_SECRETS_ENTRY_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
     name="ManualSecretsEntry",
-    relay_state=lambda: f"https://{get_config_str('proj:aws_org_home_region')}.console.aws.amazon.com/secretsmanager/listsecrets?region={get_config_str('proj:aws_org_home_region')}",
+    relay_state=lambda: (
+        f"https://{get_config_str('proj:aws_org_home_region')}.console.aws.amazon.com/secretsmanager/listsecrets?region={get_config_str('proj:aws_org_home_region')}"
+    ),
     description="The ability to manually update secrets into the secrets manager.",
     inline_policy_callable=create_manual_secrets_entry_inline_policy,
 )
 MANUAL_ARTIFACTS_UPLOAD_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
     name="ManualArtifactsUploadAccess",
-    relay_state=lambda: f"https://{get_config_str('proj:aws_org_home_region')}.console.aws.amazon.com/s3/buckets?region={get_config_str('proj:aws_org_home_region')}",
+    relay_state=lambda: (
+        f"https://{get_config_str('proj:aws_org_home_region')}.console.aws.amazon.com/s3/buckets?region={get_config_str('proj:aws_org_home_region')}"
+    ),
     description="The ability to create and delete artifacts within the Manual Artifacts S3 bucket(s).",
     inline_policy_callable=create_manual_artifacts_upload_inline_policy,
 )
@@ -174,157 +178,161 @@ VIEW_ONLY_PERM_SET_CONTAINER = AwsSsoPermissionSetContainer(
 EC2_SSO_PER_SET_CONTAINER = AwsSsoPermissionSetContainer(  # based on https://aws.amazon.com/blogs/security/how-to-enable-secure-seamless-single-sign-on-to-amazon-ec2-windows-instances-with-aws-sso/
     name="SsoIntoEc2",
     description="The ability to SSO Login into EC2 instances via Systems Manager",
-    relay_state=lambda: f"https://{get_config_str('proj:aws_org_home_region')}.console.aws.amazon.com/ec2/home?#Instances:v=3;$case=tags:true%5C,client:false;$regex=tags:false%5C,client:false",
-    inline_policy_callable=lambda: get_policy_document(
-        statements=[
-            GetPolicyDocumentStatementArgs(
-                sid="SSO",
-                effect="Allow",
-                actions=["sso:ListDirectoryAssociations*", "identitystore:DescribeUser"],
-                resources=["*"],
-            ),
-            GetPolicyDocumentStatementArgs(
-                sid="EC2",
-                effect="Allow",
-                actions=[
-                    "ec2:Describe*",
-                    "ec2:GetPasswordData",
-                    "cloudwatch:DescribeAlarms",  # view alarms in EC2 Instances console
-                    "cloudwatch:GetMetricData",  # view metrics in EC2 Instances console
-                    "compute-optimizer:GetEnrollmentStatus",  # view recommendations in EC2 Instances console
-                ],
-                resources=["*"],
-            ),
-            GetPolicyDocumentStatementArgs(
-                sid="EC2Management",
-                effect="Allow",
-                actions=[
-                    "ec2:StartInstances",
-                    "ec2:StopInstances",
-                    "ec2:RebootInstances",
-                    "ec2:GetConsoleOutput",
-                    "ssm:GetConnectionStatus",
-                ],
-                resources=["arn:aws:ec2:*:*:instance/*"],
-                conditions=[
-                    GetPolicyDocumentStatementConditionArgs(
-                        test="StringLike", variable="ec2:ResourceTag/UserAccess", values=["*--Everyone--*"]
-                    )
-                ],
-                # TODO: figure out how to lock this down to the intended instances...in theory a condition using ec2:ResourceTag/UserAccess and a value of sts:RoleSessionName is supposed to work, but it didn't seem to principalArn may be a potential option
-            ),
-            GetPolicyDocumentStatementArgs(
-                sid="SSM",
-                effect="Allow",
-                actions=[
-                    "ssm:DescribeInstanceProperties",
-                    "ssm:GetCommandInvocation",
-                    "ssm:GetInventorySchema",
-                    "ssm:DescribeInstanceInformation",
-                ],
-                resources=["*"],
-            ),
-            GetPolicyDocumentStatementArgs(
-                sid="SSMMiscConsolePerms",
-                effect="Allow",
-                actions=[
-                    "ssm:GetConnectionStatus",
-                ],
-                resources=[
-                    "*"
-                ],  # TODO: lock this down to the intended instances via a tag...maybe...maybe it doesn't matter it's just a read attribute
-            ),
-            GetPolicyDocumentStatementArgs(
-                sid="TerminateSession",
-                effect="Allow",
-                actions=["ssm:TerminateSession"],
-                resources=["*"],
-                conditions=[
-                    GetPolicyDocumentStatementConditionArgs(
-                        test="StringLike",
-                        variable="ssm:resourceTag/aws:ssmmessages:session-id",
-                        values=["${aws:userName}"],
-                    ),
-                ],
-            ),
-            GetPolicyDocumentStatementArgs(
-                sid="SSMGetDocument",
-                effect="Allow",
-                actions=["ssm:GetDocument"],
-                resources=[
-                    "arn:aws:ssm:*:*:document/AWS-StartPortForwardingSession",
-                    "arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell",
-                ],
-            ),
-            GetPolicyDocumentStatementArgs(
-                sid="SSMStartSession",
-                effect="Allow",
-                actions=["ssm:StartSession"],
-                resources=[
-                    "arn:aws:ec2:*:*:instance/*",
-                    "arn:aws:ssm:*:*:managed-instance/*",
-                    "arn:aws:ssm:*:*:document/AWS-StartPortForwardingSession",
-                    "arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell",
-                ],
-                conditions=[
-                    GetPolicyDocumentStatementConditionArgs(
-                        test="BoolIfExists",
-                        variable="ssm:SessionDocumentAccessCheck",
-                        values=["true"],
-                    ),
-                ],
-            ),
-            GetPolicyDocumentStatementArgs(
-                sid="SSMSendCommand",
-                effect="Allow",
-                actions=["ssm:SendCommand"],
-                resources=[
-                    "arn:aws:ec2:*:*:instance/*",
-                    "arn:aws:ssm:*:*:managed-instance/*",
-                    "arn:aws:ssm:*:*:document/AWSSSO-CreateSSOUser",
-                ],
-                conditions=[
-                    GetPolicyDocumentStatementConditionArgs(
-                        test="BoolIfExists",
-                        variable="ssm:SessionDocumentAccessCheck",
-                        values=["true"],
-                    ),
-                ],
-            ),
-            GetPolicyDocumentStatementArgs(
-                sid="GuiConnect",
-                effect="Allow",
-                actions=[
-                    "ssm-guiconnect:CancelConnection",
-                    "ssm-guiconnect:GetConnection",
-                    "ssm-guiconnect:StartConnection",
-                ],
-                resources=["*"],
-            ),
-            GetPolicyDocumentStatementArgs(
-                sid="TerminalConnect",
-                effect="Allow",
-                actions=[
-                    "ssmmessages:CreateControlChannel",
-                    "ssmmessages:CreateDataChannel",
-                    "ssmmessages:OpenControlChannel",
-                    "ssmmessages:OpenDataChannel",
-                ],
-                resources=[
-                    "*"
-                ],  # resources must be *.  TODO: figure out if there are relevant conditions that can lock it down
-            ),
-            GetPolicyDocumentStatementArgs(
-                sid="GlobalS3",
-                effect="Allow",
-                actions=[
-                    "s3:ListAllMyBuckets",
-                    "s3:GetBucketLocation",
-                ],
-                resources=["*"],
-            ),
-        ]
-    ).json,
+    relay_state=lambda: (
+        f"https://{get_config_str('proj:aws_org_home_region')}.console.aws.amazon.com/ec2/home?#Instances:v=3;$case=tags:true%5C,client:false;$regex=tags:false%5C,client:false"
+    ),
+    inline_policy_callable=lambda: (
+        get_policy_document(
+            statements=[
+                GetPolicyDocumentStatementArgs(
+                    sid="SSO",
+                    effect="Allow",
+                    actions=["sso:ListDirectoryAssociations*", "identitystore:DescribeUser"],
+                    resources=["*"],
+                ),
+                GetPolicyDocumentStatementArgs(
+                    sid="EC2",
+                    effect="Allow",
+                    actions=[
+                        "ec2:Describe*",
+                        "ec2:GetPasswordData",
+                        "cloudwatch:DescribeAlarms",  # view alarms in EC2 Instances console
+                        "cloudwatch:GetMetricData",  # view metrics in EC2 Instances console
+                        "compute-optimizer:GetEnrollmentStatus",  # view recommendations in EC2 Instances console
+                    ],
+                    resources=["*"],
+                ),
+                GetPolicyDocumentStatementArgs(
+                    sid="EC2Management",
+                    effect="Allow",
+                    actions=[
+                        "ec2:StartInstances",
+                        "ec2:StopInstances",
+                        "ec2:RebootInstances",
+                        "ec2:GetConsoleOutput",
+                        "ssm:GetConnectionStatus",
+                    ],
+                    resources=["arn:aws:ec2:*:*:instance/*"],
+                    conditions=[
+                        GetPolicyDocumentStatementConditionArgs(
+                            test="StringLike", variable="ec2:ResourceTag/UserAccess", values=["*--Everyone--*"]
+                        )
+                    ],
+                    # TODO: figure out how to lock this down to the intended instances...in theory a condition using ec2:ResourceTag/UserAccess and a value of sts:RoleSessionName is supposed to work, but it didn't seem to principalArn may be a potential option
+                ),
+                GetPolicyDocumentStatementArgs(
+                    sid="SSM",
+                    effect="Allow",
+                    actions=[
+                        "ssm:DescribeInstanceProperties",
+                        "ssm:GetCommandInvocation",
+                        "ssm:GetInventorySchema",
+                        "ssm:DescribeInstanceInformation",
+                    ],
+                    resources=["*"],
+                ),
+                GetPolicyDocumentStatementArgs(
+                    sid="SSMMiscConsolePerms",
+                    effect="Allow",
+                    actions=[
+                        "ssm:GetConnectionStatus",
+                    ],
+                    resources=[
+                        "*"
+                    ],  # TODO: lock this down to the intended instances via a tag...maybe...maybe it doesn't matter it's just a read attribute
+                ),
+                GetPolicyDocumentStatementArgs(
+                    sid="TerminateSession",
+                    effect="Allow",
+                    actions=["ssm:TerminateSession"],
+                    resources=["*"],
+                    conditions=[
+                        GetPolicyDocumentStatementConditionArgs(
+                            test="StringLike",
+                            variable="ssm:resourceTag/aws:ssmmessages:session-id",
+                            values=["${aws:userName}"],
+                        ),
+                    ],
+                ),
+                GetPolicyDocumentStatementArgs(
+                    sid="SSMGetDocument",
+                    effect="Allow",
+                    actions=["ssm:GetDocument"],
+                    resources=[
+                        "arn:aws:ssm:*:*:document/AWS-StartPortForwardingSession",
+                        "arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell",
+                    ],
+                ),
+                GetPolicyDocumentStatementArgs(
+                    sid="SSMStartSession",
+                    effect="Allow",
+                    actions=["ssm:StartSession"],
+                    resources=[
+                        "arn:aws:ec2:*:*:instance/*",
+                        "arn:aws:ssm:*:*:managed-instance/*",
+                        "arn:aws:ssm:*:*:document/AWS-StartPortForwardingSession",
+                        "arn:aws:ssm:*:*:document/SSM-SessionManagerRunShell",
+                    ],
+                    conditions=[
+                        GetPolicyDocumentStatementConditionArgs(
+                            test="BoolIfExists",
+                            variable="ssm:SessionDocumentAccessCheck",
+                            values=["true"],
+                        ),
+                    ],
+                ),
+                GetPolicyDocumentStatementArgs(
+                    sid="SSMSendCommand",
+                    effect="Allow",
+                    actions=["ssm:SendCommand"],
+                    resources=[
+                        "arn:aws:ec2:*:*:instance/*",
+                        "arn:aws:ssm:*:*:managed-instance/*",
+                        "arn:aws:ssm:*:*:document/AWSSSO-CreateSSOUser",
+                    ],
+                    conditions=[
+                        GetPolicyDocumentStatementConditionArgs(
+                            test="BoolIfExists",
+                            variable="ssm:SessionDocumentAccessCheck",
+                            values=["true"],
+                        ),
+                    ],
+                ),
+                GetPolicyDocumentStatementArgs(
+                    sid="GuiConnect",
+                    effect="Allow",
+                    actions=[
+                        "ssm-guiconnect:CancelConnection",
+                        "ssm-guiconnect:GetConnection",
+                        "ssm-guiconnect:StartConnection",
+                    ],
+                    resources=["*"],
+                ),
+                GetPolicyDocumentStatementArgs(
+                    sid="TerminalConnect",
+                    effect="Allow",
+                    actions=[
+                        "ssmmessages:CreateControlChannel",
+                        "ssmmessages:CreateDataChannel",
+                        "ssmmessages:OpenControlChannel",
+                        "ssmmessages:OpenDataChannel",
+                    ],
+                    resources=[
+                        "*"
+                    ],  # resources must be *.  TODO: figure out if there are relevant conditions that can lock it down
+                ),
+                GetPolicyDocumentStatementArgs(
+                    sid="GlobalS3",
+                    effect="Allow",
+                    actions=[
+                        "s3:ListAllMyBuckets",
+                        "s3:GetBucketLocation",
+                    ],
+                    resources=["*"],
+                ),
+            ]
+        ).json
+    ),
 )
 
 ALL_PERM_SET_CONTAINERS = (

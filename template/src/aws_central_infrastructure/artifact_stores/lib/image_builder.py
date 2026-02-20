@@ -37,9 +37,9 @@ class NewImageConfig(BaseModel):
 
 class ImageBuilderConfig(BaseModel):
     central_networking_subnet_name: str = Field(
-        default_factory=lambda: GENERIC_CENTRAL_PRIVATE_SUBNET_NAME
-        if CREATE_PRIVATE_SUBNET
-        else GENERIC_CENTRAL_PUBLIC_SUBNET_NAME
+        default_factory=lambda: (
+            GENERIC_CENTRAL_PRIVATE_SUBNET_NAME if CREATE_PRIVATE_SUBNET else GENERIC_CENTRAL_PUBLIC_SUBNET_NAME
+        )
     )
     central_networking_vpc_name: str = GENERIC_CENTRAL_VPC_NAME
     builder_resource_name: str
@@ -113,16 +113,18 @@ class Ec2ImageBuilder(ComponentResource):
                 append_resource_suffix(f"{resource_name}-s3-read", max_length=99),
                 role=ec2_builder.instance_role.role_name,  # type: ignore[reportArgumentType] # pyright somehow thinks that a role_name can be None...which cannot happen
                 policy=manual_artifacts_bucket_name.apply(
-                    lambda bucket_name: get_policy_document(
-                        statements=[
-                            GetPolicyDocumentStatementArgs(
-                                sid="ReadManualArtifacts",
-                                effect="Allow",
-                                actions=["s3:GetObject"],
-                                resources=[f"arn:aws:s3:::{bucket_name}/*"],
-                            )
-                        ]
-                    ).json
+                    lambda bucket_name: (
+                        get_policy_document(
+                            statements=[
+                                GetPolicyDocumentStatementArgs(
+                                    sid="ReadManualArtifacts",
+                                    effect="Allow",
+                                    actions=["s3:GetObject"],
+                                    resources=[f"arn:aws:s3:::{bucket_name}/*"],
+                                )
+                            ]
+                        ).json
+                    )
                 ),
                 opts=ResourceOptions(parent=ec2_builder.instance_role),
             )

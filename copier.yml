@@ -47,7 +47,7 @@ use_windows_in_ci:
 python_version:
     type: str
     help: What version of Python is used for development?
-    default: "3.13.2"
+    default: "3.13.9"
 
 python_package_registry:
     type: str
@@ -56,7 +56,6 @@ python_package_registry:
         - PyPI
         - AWS CodeArtifact
     default: PyPI
-
 
 
 aws_identity_center_id:
@@ -208,6 +207,17 @@ cloud_courier_infra_repo_name:
     help: What is the name of the repository that contains the Cloud Courier Infrastructure?
     when: "{{ configure_cloud_courier }}"
     default: "cloud-courier-infrastructure"
+
+_tasks:
+  - command: |
+        if [ -f ruff.toml ]; then
+            echo "Updating ruff target-version from python_version..."
+            py_major_minor="$(printf '%s' '{{ python_version }}' | cut -d. -f1,2)"
+            py_tag="py$(printf '%s' "$py_major_minor" | tr -d '.')"
+            sed -i -E 's/^target-version = "py[0-9]+"/target-version = "'"$py_tag"'"/' ruff.toml
+        else
+            echo "ruff.toml not found; skipping Ruff target-version update."
+        fi
 
 # Additional Settings
 _min_copier_version: "9.4"
