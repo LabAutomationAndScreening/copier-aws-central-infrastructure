@@ -196,7 +196,7 @@ jobs:
       AWS_ACCOUNT_ID: "{% endraw %}{{ identity_center_production_account_id }}{% raw %}"
       SHOW_PREVIEW_COMMENT_ON_PR: ${{ github.event_name == 'pull_request' }}{% endraw %}{% endif %}{% raw %}
 
-  required-check:
+  workflow-summary:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     permissions:
       statuses: write # needed for updating status on Dependabot PRs
@@ -226,6 +226,18 @@ jobs:
             exit 1
           fi
           echo "✅ All jobs completed successfully or were skipped"
+
+      - name: Mark the required-check as succeeded so the PR can be merged
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            -X POST -H "Accept: application/vnd.github.v3+json" \
+            "${{ github.event.pull_request.statuses_url }}" \
+            -f state=success -f context="required-check" -f description="✅ All required checks passed in the job triggered by pull_request" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
       - name: Mark updated Dependabot commit of devcontainer hash as succeeded
         if: needs.get-values.outputs.dependabot-commit-created == 'true'
         env:
