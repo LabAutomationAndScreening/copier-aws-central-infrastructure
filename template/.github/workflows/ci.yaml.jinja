@@ -227,10 +227,10 @@ jobs:
              [[ ! "${{ needs.identity-center-pulumi.result }}" =~ $success_pattern ]]{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %} ||
              [[ ! "${{ needs.github-repos-pulumi.result }}" =~ $success_pattern ]]{% endraw %}{% endif %}{% if manage_okta %}{% raw %} ||
              [[ ! "${{ needs.okta-pulumi.result }}" =~ $success_pattern ]]{% endraw %}{% endif %}{% raw %}; then
-            echo "❌ One or more jobs failed or were cancelled"
+            echo "❌ One or more jobs did not finish with skipped or success"
             exit 1
           fi
-          echo "✅ All jobs completed successfully or were skipped"
+          echo "✅ All jobs finished with skipped or success"
 
       - name: Mark the required-check as succeeded so the PR can be merged
         if: ${{ github.event_name == 'pull_request' }}
