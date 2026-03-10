@@ -203,6 +203,8 @@ jobs:
     needs:
       - get-values
       - check-skip-duplicate
+      - lint
+      - unit-test
       - iac-management-pulumi
       - artifact-stores-pulumi
       - central-networking-pulumi{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %}
@@ -213,15 +215,18 @@ jobs:
     steps:
       - name: fail if prior job failure
         run: |
-          failure_pattern="^(failure|cancelled)$"
+          success_pattern="^(skipped|success)$" # these are the possibilities: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#needs-context
 
-          if [[ "${{ needs.check-skip-duplicate.result }}" =~ $failure_pattern ]] ||
-             [[ "${{ needs.iac-management-pulumi.result }}" =~ $failure_pattern ]] ||
-             [[ "${{ needs.artifact-stores-pulumi.result }}" =~ $failure_pattern ]] ||
-             [[ "${{ needs.central-networking-pulumi.result }}" =~ $failure_pattern ]]{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %} ||
-             [[ "${{ needs.identity-center-pulumi.result }}" =~ $failure_pattern ]]{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %} ||
-             [[ "${{ needs.github-repos-pulumi.result }}" =~ $failure_pattern ]]{% endraw %}{% endif %}{% if manage_okta %}{% raw %} ||
-             [[ "${{ needs.okta-pulumi.result }}" =~ $failure_pattern ]]{% endraw %}{% endif %}{% raw %}; then
+          if [[ ! "${{ needs.check-skip-duplicate.result }}" =~ $success_pattern ]] ||
+             [[ ! "${{ needs.get-values.result }}" =~ $success_pattern ]] ||
+             [[ ! "${{ needs.lint.result }}" =~ $success_pattern ]] ||
+             [[ ! "${{ needs.unit-test.result }}" =~ $success_pattern ]] ||
+             [[ ! "${{ needs.iac-management-pulumi.result }}" =~ $success_pattern ]] ||
+             [[ ! "${{ needs.artifact-stores-pulumi.result }}" =~ $success_pattern ]] ||
+             [[ ! "${{ needs.central-networking-pulumi.result }}" =~ $success_pattern ]]{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %} ||
+             [[ ! "${{ needs.identity-center-pulumi.result }}" =~ $success_pattern ]]{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %} ||
+             [[ ! "${{ needs.github-repos-pulumi.result }}" =~ $success_pattern ]]{% endraw %}{% endif %}{% if manage_okta %}{% raw %} ||
+             [[ ! "${{ needs.okta-pulumi.result }}" =~ $success_pattern ]]{% endraw %}{% endif %}{% raw %}; then
             echo "❌ One or more jobs failed or were cancelled"
             exit 1
           fi
