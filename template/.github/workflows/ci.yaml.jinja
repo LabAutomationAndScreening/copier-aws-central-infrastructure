@@ -59,6 +59,7 @@ jobs:
         uses: ./.github/actions/install_deps
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
+          skip-installing-pulumi-cli: true
 
       - name: Unit test
         run: uv run pytest tests/unit --cov-report=xml --durations=5
