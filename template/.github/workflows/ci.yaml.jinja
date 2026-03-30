@@ -19,7 +19,7 @@ jobs:
   get-values:
     uses: ./.github/workflows/get-values.yaml
     permissions:
-      contents: write # needed updating dependabot branches
+      contents: write # needed for updating dependabot branches
 
   check-skip-duplicate:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
