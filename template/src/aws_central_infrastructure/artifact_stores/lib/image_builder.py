@@ -12,6 +12,7 @@ from lab_auto_pulumi import GENERIC_CENTRAL_PUBLIC_SUBNET_NAME
 from lab_auto_pulumi import GENERIC_CENTRAL_VPC_NAME
 from lab_auto_pulumi import USER_ACCESS_TAG_DELIMITER
 from lab_auto_pulumi import Ec2WithRdp
+from lab_auto_pulumi import NewSecurityGroupConfig
 from pulumi import ComponentResource
 from pulumi import Output
 from pulumi import ResourceOptions
@@ -99,8 +100,10 @@ class Ec2ImageBuilder(ComponentResource):
                 central_networking_subnet_name=config.central_networking_subnet_name,
                 instance_type=config.instance_type,
                 image_id=config.base_image_id,
-                central_networking_vpc_name=config.central_networking_vpc_name,
                 user_data=user_data_plain,
+                security_group_config=NewSecurityGroupConfig(
+                    central_networking_vpc_name=config.central_networking_vpc_name
+                ),
                 additional_instance_tags=[
                     TagArgs(
                         key="UserAccess",
