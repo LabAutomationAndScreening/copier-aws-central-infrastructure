@@ -6,6 +6,7 @@ description: Doing crazy things! So many things!
 install_claude_cli: false
 ssh_port_number: 54321
 pull_from_ecr: false
+repo_names_for_codespaces_read_permissions: ''
 use_windows_in_ci: true
 
 
