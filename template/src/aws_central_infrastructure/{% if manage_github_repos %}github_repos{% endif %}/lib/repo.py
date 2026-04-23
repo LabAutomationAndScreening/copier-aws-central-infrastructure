@@ -48,6 +48,9 @@ class AutoLinkConfig(BaseModel):
         return hash((self.ticket_prefix, self.url))
 
 
+GLOBAL_AUTOLINKS: set[AutoLinkConfig] = set()
+
+
 class GithubRepoConfig(BaseModel):
     name: str
     visibility: Literal["private", "public"] = "private"
@@ -220,8 +223,7 @@ class GithubRepo(ComponentResource):
             opts=ResourceOptions(provider=provider, parent=self, depends_on=conditional_repo_depends),
         )
 
-        global_autolinks: set[AutoLinkConfig] = set()
-        autolinks = global_autolinks | set(config.autolink_references)
+        autolinks = GLOBAL_AUTOLINKS | set(config.autolink_references)
 
         for autolink in autolinks:
             _ = RepositoryAutolinkReference(
