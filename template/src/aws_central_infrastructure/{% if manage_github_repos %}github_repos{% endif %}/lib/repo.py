@@ -1,12 +1,15 @@
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 from typing import Literal
 from typing import Self
+from typing import override
 
 from ephemeral_pulumi_deploy import append_resource_suffix
 from pulumi import ComponentResource
 from pulumi import ResourceOptions
 from pulumi_github import Provider
 from pulumi_github import Repository
+from pulumi_github import RepositoryAutolinkReference
 from pulumi_github import RepositoryEnvironment
 from pulumi_github import RepositoryEnvironmentDeploymentBranchPolicyArgs
 from pulumi_github import RepositoryEnvironmentDeploymentPolicy
@@ -19,6 +22,8 @@ from pulumi_github import RepositoryRulesetRulesPullRequestArgs
 from pulumi_github import RepositoryRulesetRulesRequiredStatusChecksArgs
 from pulumi_github import RepositoryRulesetRulesRequiredStatusChecksRequiredCheckArgs
 from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import Field
 
 from aws_central_infrastructure.artifact_stores.internal_packages import create_internal_packages_configs
 from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_REPO_NAME
@@ -29,9 +34,21 @@ from .constants import AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED
 from .constants import AWS_ORGANIZATION_REPO_NAME
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from aws_central_infrastructure.artifact_stores.lib import RepoPackageClaims
+
+
+class AutoLinkConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    ticket_prefix: str
+    url: str
+
+    @override
+    def __hash__(self) -> int:
+        return hash((self.ticket_prefix, self.url))
+
+
+GLOBAL_AUTOLINKS: set[AutoLinkConfig] = set()
 
 
 class GithubRepoConfig(BaseModel):
@@ -61,12 +78,21 @@ class GithubRepoConfig(BaseModel):
     create_pypi_publishing_environments: bool = (
         False  # this generally gets automatically updated based on the package claims in the Artifact Stores module
     )
+    autolink_references: list[AutoLinkConfig] = Field(default_factory=list[AutoLinkConfig])
+    topics: list[str] = Field(default_factory=list)
+    allowed_merge_methods: Sequence[Literal["merge", "squash", "rebase"]] | None = Field(
+        default=None,
+        description="When left as None, this just uses the boolean flags for allow_merge_commit etc. But it can be set to an explicit list, usually in an attempt to prevent all types of merge commits and only allow fast-forward merges ('merge' cannot be allowed as a value here in that case, typically 'rebase' is used for this field)",
+    )
 
 
 class GithubRepo(ComponentResource):
     def __init__(self, *, config: GithubRepoConfig, provider: Provider | None = None):
         super().__init__("labauto:GithubRepo", append_resource_suffix(config.name, max_length=150), None)
         if config.create_repo:
+            repo_topics = ["managed-by-aws-central-infrastructure-iac-repo"]
+            repo_topics += config.topics
+
             repo = Repository(
                 append_resource_suffix(config.name, max_length=150),
                 name=config.name,
@@ -113,9 +139,7 @@ class GithubRepo(ComponentResource):
                 allow_update_branch=config.allow_update_branch
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.allow_update_branch,
-                topics=["managed-by-aws-central-infrastructure-iac-repo"]
-                if config.import_existing_repo_using_config is None
-                else None,
+                topics=repo_topics if config.import_existing_repo_using_config is None else None,
                 opts=ResourceOptions(
                     provider=provider,
                     parent=self,
@@ -164,7 +188,7 @@ class GithubRepo(ComponentResource):
                     actor_id=4,  # the ID for the Write Repository Role
                 )
             )
-        ruleset_depends = [] if not config.create_repo else [repo]  # type: ignore[reportPossiblyUnboundVariable] # this is a false positive, due to the conditionals in this ternary and the logic above
+        conditional_repo_depends = [] if not config.create_repo else [repo]  # type: ignore[reportPossiblyUnboundVariable] # this is a false positive, due to the conditionals in this ternary and the logic above
         _ = RepositoryRuleset(
             append_resource_suffix(config.name, max_length=150),
             bypass_actors=bypass_actors
@@ -189,15 +213,26 @@ class GithubRepo(ComponentResource):
                     strict_required_status_checks_policy=config.require_branch_to_be_up_to_date_before_merge,
                 ),
                 pull_request=RepositoryRulesetRulesPullRequestArgs(
+                    allowed_merge_methods=config.allowed_merge_methods,
                     dismiss_stale_reviews_on_push=True,
                     require_last_push_approval=True,
                     required_approving_review_count=1,
                     require_code_owner_review=config.require_code_owner_review,
-                    # TODO: set the Allowed Merge Methods once that becomes available through Pulumi
                 ),
             ),
-            opts=ResourceOptions(provider=provider, parent=self, depends_on=ruleset_depends),
+            opts=ResourceOptions(provider=provider, parent=self, depends_on=conditional_repo_depends),
         )
+
+        autolinks = GLOBAL_AUTOLINKS | set(config.autolink_references)
+
+        for autolink in autolinks:
+            _ = RepositoryAutolinkReference(
+                append_resource_suffix(f"{config.name}-{autolink.ticket_prefix}-autolink", max_length=150),
+                repository=config.name,
+                key_prefix=autolink.ticket_prefix,
+                target_url_template=autolink.url,
+                opts=ResourceOptions(parent=self, provider=provider, depends_on=conditional_repo_depends),
+            )
 
 
 def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Provider) -> None:

@@ -1,4 +1,7 @@
+from .lib import GLOBAL_AUTOLINKS
 from .lib import GithubRepoConfig
+
+GLOBAL_AUTOLINKS.update([])
 
 
 def create_repo_configs(configs: list[GithubRepoConfig]):

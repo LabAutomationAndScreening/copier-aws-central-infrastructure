@@ -111,9 +111,26 @@ class GithubOrgAdminAsTeamMemberError(Exception):
         )
 
 
+class GithubTeamMemberNotInOrgMembersError(Exception):
+    def __init__(self, *, username: str, team_name: str):
+        super().__init__(
+            f"Team member '{username}' in team '{team_name}' is not listed in org_members.everyone or org_members.org_admins. Add them to org_members.everyone first."
+        )
+
+
+def _validate_team_members_in_org(configs: list[GithubTeamConfig], org_members: GithubOrgMembers) -> None:
+    all_org_usernames = set(org_members.org_admins) | set(org_members.everyone)
+    for config in configs:
+        for member in config.members + config.maintainers:
+            if member not in all_org_usernames:
+                raise GithubTeamMemberNotInOrgMembersError(username=member, team_name=config.name)
+
+
 def fully_configure_teams(
     *, configs: list[GithubTeamConfig], org_members: GithubOrgMembers, root_team: GithubTeamConfig
 ) -> None:
+    _validate_team_members_in_org(configs, org_members)
+
     for config in configs:
         admins_to_convert: list[str] = []
         for admin in org_members.org_admins:
