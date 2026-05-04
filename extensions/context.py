@@ -9,33 +9,37 @@ class ContextUpdater(ContextHook):
     update = False
 
     @override
-    def hook(self, context: dict[Any, Any]) -> dict[Any, Any]:
-        context["uv_version"] = "0.11.7"
-        context["pnpm_version"] = "10.33.1"
+    def hook(  # noqa: PLR0915 # yes, this is a lot of statements, but it's all just creating the dict
+        self, context: dict[Any, Any]
+    ) -> dict[Any, Any]:
+        context["uv_version"] = "0.11.8"
+        context["pnpm_version"] = "11.0.4"
+        context["npm_version"] = "11.13.0"
+        context["nvm_version"] = "0.40.4"
         context["pre_commit_version"] = "4.5.1"
-        context["pyright_version"] = ">=1.1.408"
+        context["pyright_version"] = ">=1.1.409"
         context["pytest_version"] = ">=9.0.3"
         context["pytest_randomly_version"] = ">=4.1.0"
         context["pytest_cov_version"] = ">=7.1.0"
         context["ty_version"] = ">=0.0.32"
-        context["copier_version"] = "==9.14.3"
+        context["copier_version"] = "==9.15.0"
         context["copier_template_extensions_version"] = "==0.3.3"
         context["sphinx_version"] = "9.0.4"
-        context["pulumi_version"] = ">=3.231.0"
-        context["pulumi_aws_version"] = ">=7.26.0"
-        context["pulumi_aws_native_version"] = ">=1.62.0"
+        context["pulumi_version"] = ">=3.234.0"
+        context["pulumi_aws_version"] = ">=7.28.0"
+        context["pulumi_aws_native_version"] = ">=1.63.0"
         context["pulumi_command_version"] = ">=1.2.1"
-        context["pulumi_github_version"] = ">=6.12.1"
-        context["pulumi_okta_version"] = ">=6.4.0"
+        context["pulumi_github_version"] = ">=6.13.1"
+        context["pulumi_okta_version"] = ">=6.6.0"
         context["boto3_version"] = ">=1.42.92"
         context["ephemeral_pulumi_deploy_version"] = ">=0.0.6"
         context["pydantic_version"] = ">=2.13.3"
         context["pyinstaller_version"] = ">=6.19.0"
         context["setuptools_version"] = "80.7.1"
         context["strawberry_graphql_version"] = ">=0.298.0"
-        context["fastapi_version"] = ">=0.135.3"
+        context["fastapi_version"] = ">=0.136.1"
         context["fastapi_offline_version"] = ">=1.7.4"
-        context["uvicorn_version"] = ">=0.44.0"
+        context["uvicorn_version"] = ">=0.46.0"
         context["lab_auto_pulumi_version"] = ">=0.2.0"
         context["ariadne_codegen_version"] = ">=0.18.0"
         context["pytest_mock_version"] = ">=3.15.1"
@@ -48,7 +52,7 @@ class ContextUpdater(ContextHook):
         context["pytest_recording_version"] = ">=0.13.4"
         context["pytest_asyncio_version"] = ">=1.3.0"
         context["pytest_reserial_version"] = ">=0.6.0"
-        context["python_faker_version"] = ">=40.13.0"
+        context["python_faker_version"] = ">=40.15.0"
         context["adafruit_circuitpython_busdevice_version"] = "==5.2.14"
         context["adafruit_circuitpython_register_version"] = "==1.11.1"
 
@@ -106,12 +110,13 @@ class ContextUpdater(ContextHook):
         context["gha_medium_timeout_minutes"] = "8"
         context["gha_long_timeout_minutes"] = "15"
         context["gha_xlong_timeout_minutes"] = "45"
+        context["gha_xxlong_timeout_minutes"] = "90"
 
         context["debian_release_name"] = "trixie"
         context["alpine_image_version"] = "3.23"
         context["nginx_image_version"] = "1.29.4"
 
-        context["kiota_cli_version"] = "1.31.0"
+        context["kiota_cli_version"] = "1.31.1"
 
         context["py312_version"] = "3.12.7"
         context["py313_version"] = "3.13.9"
