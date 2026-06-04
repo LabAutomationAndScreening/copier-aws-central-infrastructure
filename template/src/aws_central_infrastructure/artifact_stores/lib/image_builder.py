@@ -114,7 +114,7 @@ class Ec2ImageBuilder(ComponentResource):
             source_instance_id = ec2_builder.instance.id
             _ = RolePolicy(
                 append_resource_suffix(f"{resource_name}-s3-read", max_length=99),
-                role=ec2_builder.instance_role.role_name,  # type: ignore[reportArgumentType] # pyright somehow thinks that a role_name can be None...which cannot happen
+                role=ec2_builder.instance_role.role_name,
                 policy=manual_artifacts_bucket_name.apply(
                     lambda bucket_name: (
                         get_policy_document(
