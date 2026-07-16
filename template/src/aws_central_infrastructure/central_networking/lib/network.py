@@ -23,6 +23,7 @@ from pulumi_aws_native import ram
 from pulumi_aws_native import ssm
 from pydantic import BaseModel
 from pydantic import ConfigDict
+from pydantic import field_validator
 
 from aws_central_infrastructure.iac_management.lib import create_classic_providers
 from aws_central_infrastructure.iac_management.lib import create_providers
@@ -94,14 +95,24 @@ class AllAccountProviders(ComponentResource):
         all_accounts: list[AwsAccountInfo] = []
         for workload_info in workloads_info.values():
             all_accounts.extend(
-                [*workload_info.prod_accounts, *workload_info.staging_accounts, *workload_info.dev_accounts]
+                [
+                    *workload_info.prod_accounts,
+                    *workload_info.staging_accounts,
+                    *workload_info.dev_accounts,
+                ]
             )
         self.all_native_providers = create_providers(aws_accounts=all_accounts, parent=self)
         self.all_classic_providers = create_classic_providers(aws_accounts=all_accounts, parent=self)
 
 
 class CentralNetworkingVpc(ComponentResource):
-    def __init__(self, *, name: str, all_providers: AllAccountProviders, all_vpcs: dict[str, Self]):
+    def __init__(
+        self,
+        *,
+        name: str,
+        all_providers: AllAccountProviders,
+        all_vpcs: dict[str, Self],
+    ):
         super().__init__(
             "labauto:CentralNetworkingVpc",
             append_resource_suffix(name),
@@ -109,7 +120,10 @@ class CentralNetworkingVpc(ComponentResource):
         )
         all_vpcs[name] = self
         self.resource_name_base = f"{name}-vpc"
-        self.vpc_tags = [TagArgs(key="Name", value=f"central-networking-{name}"), *common_tags_native()]
+        self.vpc_tags = [
+            TagArgs(key="Name", value=f"central-networking-{name}"),
+            *common_tags_native(),
+        ]
         self.vpc = ec2.Vpc(
             append_resource_suffix(name),
             cidr_block="10.0.0.0/16",
@@ -137,6 +151,25 @@ class CentralNetworkingVpc(ComponentResource):
             internet_gateway_id=self.igw.id,
             opts=ResourceOptions(parent=self.vpc),
         )
+
+
+class ARecordConfig(BaseModel):
+    name: str
+    records: list[str]
+
+    @field_validator("name")
+    @classmethod
+    def validate_name_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("ARecordConfig 'name' cannot be empty")  # noqa: TRY003 # this is a simple validation check no need for custom exception
+        return v.strip()
+
+    @field_validator("records")
+    @classmethod
+    def validate_records_not_empty(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("ARecordConfig 'records' cannot be empty")  # noqa: TRY003 # this is a simple validation check no need for custom exception
+        return v
 
 
 class SharedSubnetConfig(BaseModel):
@@ -173,7 +206,10 @@ class SharedSubnet(ComponentResource):
 
         all_subnets[config.name] = self
         self.resource_base_name = f"central-{config.name}"
-        subnet_tags = [TagArgs(key="Name", value=f"central-networking-{config.name}"), *common_tags_native()]
+        subnet_tags = [
+            TagArgs(key="Name", value=f"central-networking-{config.name}"),
+            *common_tags_native(),
+        ]
         subnet = ec2.Subnet(
             append_resource_suffix(self.resource_base_name, max_length=75),
             vpc_id=config.vpc.vpc.id,
@@ -206,7 +242,10 @@ class SharedSubnet(ComponentResource):
             parent=self.subnet_share,
             accounts_to_share_to=config.accounts_to_share_to,
         )
-        route_table_tags = [TagArgs(key="Name", value=self.resource_base_name), *common_tags_native()]
+        route_table_tags = [
+            TagArgs(key="Name", value=self.resource_base_name),
+            *common_tags_native(),
+        ]
         route_table = ec2.RouteTable(
             append_resource_suffix(self.resource_base_name, max_length=75),
             vpc_id=config.vpc.vpc.id,
@@ -266,3 +305,52 @@ class SharedSubnet(ComponentResource):
             param_name=f"{CENTRAL_NETWORKING_SSM_PREFIX}/subnets/{config.name}/id",
             include_this_account=True,
         )
+
+
+class CentralNetworkingHostedZone(ComponentResource):
+    def __init__(
+        self,
+        *,
+        name: str,
+        domain: str,
+        vpcs: list[CentralNetworkingVpc],
+        records: list[ARecordConfig],
+        all_providers: AllAccountProviders,
+    ):
+        super().__init__(
+            "labauto:CentralNetworkingHostedZone",
+            append_resource_suffix(name),
+            None,
+        )
+        # Validate no duplicate record names
+        record_names = [record_config.name for record_config in records]
+        if len(record_names) != len(set(record_names)):
+            duplicates = [name for name in record_names if record_names.count(name) > 1]
+            raise ValueError(f"Duplicate record names found: {', '.join(set(duplicates))}")  # noqa: TRY003 # this is a simple validation check no need for custom exception
+
+        # AWS Native provider doesn't support creating records so using classic provider as to not mix providers
+        self.zone = pulumi_aws.route53.Zone(
+            append_resource_suffix(name),
+            name=domain,
+            vpcs=[pulumi_aws.route53.ZoneVpcArgs(vpc_id=vpc.vpc.vpc_id) for vpc in vpcs],
+            comment="",
+            opts=ResourceOptions(parent=self),
+        )
+        create_ssm_param_in_all_accounts(
+            providers=all_providers.all_native_providers,
+            parent=self,
+            resource_name_prefix="central-networking-hz-id",
+            param_name=f"{CENTRAL_NETWORKING_SSM_PREFIX}/hosted-zones/internal/id",
+            param_value=self.zone.id,
+            include_this_account=True,
+        )
+        for record_config in records:
+            _ = pulumi_aws.route53.Record(
+                append_resource_suffix(f"{name}-{record_config.name}", max_length=150),
+                zone_id=self.zone.id,
+                name=record_config.name,
+                type="A",
+                ttl=300,
+                records=record_config.records,
+                opts=ResourceOptions(parent=self.zone),
+            )
