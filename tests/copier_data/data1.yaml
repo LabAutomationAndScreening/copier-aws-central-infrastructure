@@ -34,6 +34,7 @@ identity_center_production_account_id: 023202320444
 configure_cloud_courier: false
 manage_okta: true
 okta_org_name: my-okta-org
+company_email_domain: blah.org
 okta_tokens_created: false
 manage_github_repos: false
 create_private_subnet: true

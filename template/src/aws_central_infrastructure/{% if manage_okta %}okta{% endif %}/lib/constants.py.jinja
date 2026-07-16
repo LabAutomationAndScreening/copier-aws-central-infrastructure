@@ -1,2 +1,9 @@
-{% raw %}OKTA_ORG_NAME = "{% endraw %}{{ okta_org_name }}{% raw %}"
-OKTA_TOKENS_CREATED = {% endraw %}{{ 'True' if okta_tokens_created else 'False'}}{% raw %}{% endraw %}
+{% raw %}from enum import StrEnum
+
+OKTA_ORG_NAME = "{% endraw %}{{ okta_org_name }}{% raw %}"
+OKTA_TOKENS_CREATED = {% endraw %}{{ 'True' if okta_tokens_created else 'False'}}{% raw %}
+COMPANY_EMAIL_DOMAIN = "{% endraw %}{{ company_email_domain }}{% raw %}
+
+class OktaUserType(StrEnum):
+    DEFAULT = "User"
+    EXTERNAL = "External"{% endraw %}
