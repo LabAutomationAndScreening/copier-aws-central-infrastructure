@@ -15,6 +15,7 @@ This project is a Copier template used to generate other copier templates. It is
 - When disabling a linting rule with an inline directive, provide a comment at the end of the line (or on the line above for tools that don't allow extra text after an inline directive) describing the reasoning for disabling the rule.
 - Avoid telling the type checker what a type is rather than letting it prove it. This includes type assertions (`as SomeType` in TypeScript, `cast()` in Python) and variable annotations that override inference. Prefer approaches that let the type checker verify the type itself: `isinstance`/`instanceof` narrowing, restructuring code so the correct type flows naturally, or using discriminated unions. When there is genuinely no alternative, add a comment explaining why the workaround is necessary and why it is safe.
 - Avoid `||` (TypeScript) or `or` (Python) in `if`/`elif` conditions, and avoid `x in ['a', 'b']`-style membership tests in implementation code — coverage tools treat these as a single branch, silently masking untested paths and producing false 100% branch coverage. Use separate `if`/`elif` branches instead so each condition is independently covered.
+- When filtering logic combines multiple `and`-joined guards (e.g. a null check alongside a value check), prefer a loop with explicit `if`/`continue` branches over a single-line comprehension. A compound boolean filter on one line hides individual branches from line coverage — each guard condition should be its own statement so missing test cases are surfaced.
 
 ## Testing
 
@@ -24,7 +25,6 @@ This project is a Copier template used to generate other copier templates. It is
 - Avoid magic values in comparisons in tests in all languages (like ruff rule PLR2004 specifies). Note: `1` and `0` are not magic numbers (according to PLR2004)
 - Prefer using random values in tests rather than arbitrary ones (e.g. the faker library, uuids, random.randint) when possible. For enums, pick randomly rather than hardcoding one value.
 - Avoid loops in tests — assert each item explicitly so failures pinpoint the exact element. When verifying a condition across all items in a collection, collect the violations into a list and assert it's empty (e.g., assert [x for x in items if bad_condition(x)] == []).
-- When filtering logic combines multiple `and`-joined guards (e.g. a null check alongside a value check), prefer a loop with explicit `if`/`continue` branches over a single-line comprehension. A compound boolean filter on one line hides individual branches from line coverage — each guard condition should be its own statement so missing test cases are surfaced.
 - When a test's final assertion is an absence (e.g., element is `null`, list is empty, modal is closed), include a prior presence assertion confirming the expected state existed before the action that removed it. A test whose only assertion is an absence check can pass vacuously if setup silently failed.
 - When asserting a mock or spy was called with specific arguments, always constrain as tightly as possible. In order of preference: (1) assert called exactly once with those args (`assert_called_once_with` in Python, `toHaveBeenCalledExactlyOnceWith` in Vitest/Jest); (2) if multiple calls are expected, assert the total call count and use a positional or last-call assertion (`nthCalledWith`, `lastCalledWith` / `assert_has_calls` with `call_args_list[n]`); (3) plain "called with at any point" (`toHaveBeenCalledWith`, `assert_called_with`) is a last resort only when neither the call count nor the call order can reasonably be constrained.
 - When asserting an exception is raised, verify the error message includes all key constructor arguments — not just one identifying field. This ensures the error message is fully populated and catches cases where arguments are swapped or missing. In Python: use the `match` parameter in `pytest.raises`. In TypeScript: use a regex or substring in `toThrow`, or catch and assert on error properties individually.
@@ -46,6 +46,7 @@ This project is a Copier template used to generate other copier templates. It is
 
 ### Python Testing
 
+- Keep every behavioral `assert` inside the test function body — never factor assertions into helper functions or fixtures. pytest's assertion rewriting (the rich failure diff) only applies to asserts located in the test module (or conftest/registered plugins), so an `assert` hidden in an ordinary helper reports an opaque failure with no useful diff.
 - When using `mocker.spy` on a class-level method (including inherited ones), the spy records the unbound call, so assertions need `ANY` as the first argument to match self: `spy.assert_called_once_with(ANY, expected_arg)`
 - Before writing new mock/spy helpers, check the `tests/unit/` folder for pre-built helpers in files like `fixtures.py` or `*mocks.py`
 - When a test needs a fixture only for its side effects (not its return value), use `@pytest.mark.usefixtures(fixture_name.__name__)` instead of adding an unused parameter with a noqa comment
@@ -167,4 +168,27 @@ bd export -o [relative path to repository root]/.claude/.beads/issues-dump.jsonl
 
 For more details, see README.md and docs/QUICKSTART.md.
 
+# Copier-Managed Files
+
+Files generated from upstream copier templates are listed in `.config/.copier-managed-files.json` (if present).
+The manifest has a `templates` array — one entry per template in the chain. Each entry has `src` (the template URL),
+`managed_files` (files it placed), and optionally `parent_src` (the template that generated it, forming the chain).
+
+When a file appears in multiple entries, the **last entry in the array** is the authoritative owner for backporting —
+it is the most-specific template in the chain. `parent_src` lets you trace the full chain upward to the root.
+
+When reviewing a PR that modifies a file listed in the manifest, check whether the change is generic enough to
+backport to the owning template. If so, add a single summary comment (not one per file) noting which files are
+template-managed and which template repo the changes should be backported to.
+
 <!-- END BEADS INTEGRATION -->
+
+<!--
+============== WARNING ==============================================================================
+File is managed by copier template: gh:LabAutomationAndScreening/copier-base-template.git
+See .config/.copier-managed-files.json for details.
+
+You are welcome to make changes to this file in your repo if they are custom to your project,
+but if the change should be shared with other projects, please backport it to the template repo.
+=====================================================================================================
+-->
