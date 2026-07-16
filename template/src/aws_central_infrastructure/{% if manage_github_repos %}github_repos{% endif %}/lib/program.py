@@ -7,6 +7,8 @@ from lab_auto_pulumi import GITHUB_PREVIEW_TOKEN_SECRET_NAME
 from pulumi import ResourceOptions
 from pulumi_aws_native import secretsmanager
 
+from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_GITHUB_ORG_NAME
+
 from ..collaborators import define_repository_collaborators
 from ..repos import create_repo_configs
 from ..teams import define_team_configs
@@ -48,7 +50,7 @@ def pulumi_program() -> None:
         )
     if not GITHUB_TOKENS_CREATED:
         return
-    provider = create_github_provider()
+    provider = create_github_provider(org_name=CENTRAL_INFRA_GITHUB_ORG_NAME)
     root_team = GithubTeamConfig(name="Everyone", description="Everyone in the organization, the root of all teams.")
     dev_sec_ops_team_config = GithubTeamConfig(name="DevSecOps", description="DevSecOps Team", parent_team=root_team)
     team_configs: list[GithubTeamConfig] = [dev_sec_ops_team_config]
