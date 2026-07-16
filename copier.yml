@@ -208,6 +208,11 @@ create_private_subnet:
     help: Do you want to create a private subnet with a NAT Gateway within the central networking VPC (this will incur costs...around $30/month)?
     default: no
 
+create_central_networking_hosted_zone:
+    type: bool
+    help: Do you want to create a Route53 hosted zone in the central networking account for shared DNS management across the organization (this will incur costs, around $1/month)?
+    default: no
+
 configure_cloud_courier:
     type: bool
     help: Should Identity Center permissions be automatically configured to facilitate using Cloud Courier?

@@ -43,6 +43,8 @@ ECR_AUTH_STATEMENT = GetPolicyDocumentStatementArgs(
     ],
     resources=["*"],
 )
+# pylint: disable=duplicate-code
+# TODO: decide whether ECR policy statements belong in a shared library
 ECR_PULL_STATEMENT = GetPolicyDocumentStatementArgs(
     sid="EcrPull",
     effect="Allow",
@@ -53,6 +55,7 @@ ECR_PULL_STATEMENT = GetPolicyDocumentStatementArgs(
     ],
     resources=["*"],
 )
+# pylint: enable=duplicate-code
 PULL_FROM_CENTRAL_ECRS_STATEMENTS = [ECR_AUTH_STATEMENT, ECR_PULL_STATEMENT]
 
 
@@ -69,7 +72,7 @@ class CommonOidcConfigKwargs(TypedDict):
     repo_org: str
     repo_name: str
     managed_policy_arns: list[str]
-    role_policy: iam.RolePolicyArgs
+    role_policies: list[iam.RolePolicyArgs]
 
 
 class GithubOidcConfig(BaseModel):
@@ -79,22 +82,20 @@ class GithubOidcConfig(BaseModel):
     repo_name: str
     managed_policy_arns: list[str] = Field(default_factory=list)
     restrictions: str | None = None
-    role_policy: iam.RolePolicyArgs | None = None
+    role_policies: list[iam.RolePolicyArgs] = Field(default_factory=list)  # pyright: ignore[reportUnknownVariableType] # pulumi_aws_native stubs leave RolePolicyArgs partially untyped
     role_resource_name_prefix: str = "github-oidc--"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def create_role(self, *, provider_arn: str, parent: Resource | None = None) -> iam.Role:
-        role_policies: list[iam.RolePolicyArgs] = []
-        if self.role_policy is not None:
-            role_policies.append(self.role_policy)
         return iam.Role(
             f"{self.role_resource_name_prefix}{self.role_name}",
             role_name=self.role_name,
             assume_role_policy_document=create_oidc_assume_role_policy(
                 oidc_config=self, provider_arn=provider_arn
             ).json,
-            policies=role_policies,
+            managed_policy_arns=self.managed_policy_arns or None,
+            policies=self.role_policies or None,
             tags=common_tags_native(),
             opts=ResourceOptions(parent=parent),
         )
@@ -171,32 +172,76 @@ def create_kms_policy() -> iam.RolePolicyArgs:
     )
 
 
+def create_assume_dns_delegate_preview_policy(*, account_name: str) -> iam.RolePolicyArgs:
+    from aws_central_infrastructure.central_networking.lib.role_names import (  # noqa: PLC0415 Imported lazily: central_networking.lib depends on iac_management.lib at module load, so a top-level import here would create a circular import between the two packages.
+        dns_delegate_preview_role_name,
+    )
+
+    # The dns-delegate-preview-* roles (created per account in central_networking) are named after the
+    # account they delegate to, so scope this to exactly the one account this preview role runs in.
+    central_infra_account_id = get_aws_account_id()
+    return iam.RolePolicyArgs(
+        policy_name="AssumeCentralDnsDelegatePreviewRoles",
+        policy_document=get_policy_document(
+            statements=[
+                GetPolicyDocumentStatementArgs(
+                    sid="AssumeDnsDelegatePreviewRoles",
+                    effect="Allow",
+                    actions=["sts:AssumeRole"],
+                    resources=[
+                        f"arn:aws:iam::{central_infra_account_id}:role/{dns_delegate_preview_role_name(account_name)}"
+                    ],
+                )
+            ]
+        ).json,
+    )
+
+
+def infra_preview_role_name(repo_name: str, role_name_suffix: str | None = None) -> str:
+    ending = repo_name if role_name_suffix is None else f"{repo_name}--{role_name_suffix}"
+    return f"InfraPreview--{ending}"
+
+
+def infra_deploy_role_name(repo_name: str, role_name_suffix: str | None = None) -> str:
+    ending = repo_name if role_name_suffix is None else f"{repo_name}--{role_name_suffix}"
+    return f"InfraDeploy--{ending}"
+
+
 def create_oidc_for_standard_workload(
-    *, workload_info: AwsLogicalWorkload, repo_org: str, repo_name: str, role_name_suffix: str | None = None
+    *,
+    workload_info: AwsLogicalWorkload,
+    repo_org: str,
+    repo_name: str,
+    role_name_suffix: str | None = None,
 ) -> list[GithubOidcConfig]:
     """Permissions for the whole repo to deploy to any dev accounts and to run previews against staging.
 
     Permissions on main branch to deploy to staging and preview/deploy to prod.
     """
-    role_name_ending = repo_name
-    if role_name_suffix is not None:
-        role_name_ending += f"--{role_name_suffix}"
     kms_policy = create_kms_policy()
     configs: list[GithubOidcConfig] = []
-    preview_kwargs: CommonOidcConfigKwargs = {
-        "role_name": f"InfraPreview--{role_name_ending}",
-        "repo_org": repo_org,
-        "repo_name": repo_name,
-        "managed_policy_arns": ["arn:aws:iam::aws:policy/ReadOnlyAccess"],
-        "role_policy": kms_policy,
-    }
     deploy_kwargs: CommonOidcConfigKwargs = {
-        "role_name": f"InfraDeploy--{role_name_ending}",
+        "role_name": infra_deploy_role_name(repo_name, role_name_suffix),
         "repo_org": repo_org,
         "repo_name": repo_name,
         "managed_policy_arns": ["arn:aws:iam::aws:policy/AdministratorAccess"],
-        "role_policy": kms_policy,
+        "role_policies": [kms_policy],
     }
+
+    def preview_config(*, account_id: str, account_name: str) -> GithubOidcConfig:
+        # role_policies are scoped per-account so each preview role can only assume its own account's dns-delegate-preview role
+        return GithubOidcConfig(
+            aws_account_id=account_id,
+            role_name=infra_preview_role_name(repo_name, role_name_suffix),
+            repo_org=repo_org,
+            repo_name=repo_name,
+            managed_policy_arns=["arn:aws:iam::aws:policy/ReadOnlyAccess"],
+            role_policies=[
+                kms_policy,
+                create_assume_dns_delegate_preview_policy(account_name=account_name),
+            ],
+        )
+
     for dev_account in workload_info.dev_accounts:
         configs.append(
             GithubOidcConfig(
@@ -204,12 +249,7 @@ def create_oidc_for_standard_workload(
                 **deploy_kwargs,
             )
         )
-        configs.append(
-            GithubOidcConfig(
-                aws_account_id=dev_account.id,
-                **preview_kwargs,
-            )
-        )
+        configs.append(preview_config(account_id=dev_account.id, account_name=dev_account.name))
     for staging_account in workload_info.staging_accounts:
         configs.append(
             GithubOidcConfig(
@@ -218,12 +258,7 @@ def create_oidc_for_standard_workload(
                 **deploy_kwargs,
             )
         )
-        configs.append(
-            GithubOidcConfig(
-                aws_account_id=staging_account.id,
-                **preview_kwargs,
-            )
-        )
+        configs.append(preview_config(account_id=staging_account.id, account_name=staging_account.name))
     for prod_account in workload_info.prod_accounts:
         configs.append(
             GithubOidcConfig(
@@ -232,12 +267,7 @@ def create_oidc_for_standard_workload(
                 **deploy_kwargs,
             )
         )
-        configs.append(
-            GithubOidcConfig(
-                aws_account_id=prod_account.id,
-                **preview_kwargs,
-            )
-        )
+        configs.append(preview_config(account_id=prod_account.id, account_name=prod_account.name))
     return configs
 
 
@@ -249,27 +279,24 @@ def create_oidc_for_single_account_workload(
     role_name_suffix: str
     | None = None,  # Used when there may be multiple separate stacks using different OIDC roles in the same repo.
 ) -> list[GithubOidcConfig]:
-    role_name_ending = repo_name
-    if role_name_suffix is not None:
-        role_name_ending += f"--{role_name_suffix}"
     kms_policy = create_kms_policy()
     return [
         GithubOidcConfig(
             aws_account_id=aws_account_id,
-            role_name=f"InfraDeploy--{role_name_ending}",
+            role_name=infra_deploy_role_name(repo_name, role_name_suffix),
             repo_org=repo_org,
             repo_name=repo_name,
             restrictions="ref:refs/heads/main",
             managed_policy_arns=["arn:aws:iam::aws:policy/AdministratorAccess"],
-            role_policy=kms_policy,
+            role_policies=[kms_policy],
         ),
         GithubOidcConfig(
             aws_account_id=aws_account_id,
-            role_name=f"InfraPreview--{role_name_ending}",
+            role_name=infra_preview_role_name(repo_name, role_name_suffix),
             repo_org=repo_org,
             repo_name=repo_name,
             managed_policy_arns=["arn:aws:iam::aws:policy/ReadOnlyAccess"],
-            role_policy=kms_policy,
+            role_policies=[kms_policy],
         ),
     ]
 
@@ -327,7 +354,8 @@ class WorkloadGithubOidc(ComponentResource):
                 oidc_provider_arn=oidc_provider_arns[oidc_config.aws_account_id],
             ).apply(
                 lambda args: create_oidc_assume_role_policy(
-                    oidc_config=args["oidc_config"], provider_arn=args["oidc_provider_arn"]
+                    oidc_config=args["oidc_config"],
+                    provider_arn=args["oidc_provider_arn"],
                 )
             )
 
@@ -344,7 +372,7 @@ class WorkloadGithubOidc(ComponentResource):
                 role_name=oidc_config.role_name,
                 assume_role_policy_document=assume_role_policy_doc.json,
                 managed_policy_arns=oidc_config.managed_policy_arns,
-                policies=None if oidc_config.role_policy is None else [oidc_config.role_policy],
+                policies=oidc_config.role_policies or None,
                 tags=common_tags_native(),
                 opts=ResourceOptions(provider=pulumi_provider, parent=self),
             )

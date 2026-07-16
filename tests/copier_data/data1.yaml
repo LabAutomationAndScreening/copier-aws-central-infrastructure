@@ -38,3 +38,4 @@ company_email_domain: blah.org
 okta_tokens_created: false
 manage_github_repos: false
 create_private_subnet: true
+create_central_networking_hosted_zone: true

@@ -9,6 +9,8 @@ from .github_oidc_lib import GithubOidcConfig
 from .github_oidc_lib import create_oidc_assume_role_policy
 from .github_oidc_lib import create_oidc_for_single_account_workload
 from .github_oidc_lib import create_oidc_for_standard_workload
+from .github_oidc_lib import infra_deploy_role_name
+from .github_oidc_lib import infra_preview_role_name
 from .github_oidc_lib import principal_in_org_condition
 from .pulumi_bootstrap import create_classic_providers
 from .pulumi_bootstrap import create_providers
