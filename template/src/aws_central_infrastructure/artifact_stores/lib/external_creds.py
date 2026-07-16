@@ -15,7 +15,6 @@ from pydantic import model_validator
 from aws_central_infrastructure.iac_management.lib import ECR_AUTH_STATEMENT
 from aws_central_infrastructure.iac_management.lib.constants import CENTRAL_INFRA_PROD_ACCOUNT_ID
 
-
 EXTERNAL_CREDS_SECRET_PREFIX = f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/external-creds"
 
 
