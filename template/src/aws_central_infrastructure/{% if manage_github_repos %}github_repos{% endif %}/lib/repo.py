@@ -26,9 +26,7 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
-from aws_central_infrastructure.artifact_stores.internal_packages import (
-    create_internal_packages_configs,
-)
+from aws_central_infrastructure.artifact_stores.internal_packages import create_internal_packages_configs
 from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_REPO_NAME
 
 from .constants import ACTIVELY_IMPORT_AWS_ORG_REPOS
