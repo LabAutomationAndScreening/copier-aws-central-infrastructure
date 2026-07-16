@@ -1,4 +1,4 @@
-{% raw %}"""Identity center Pulumi stack package.{% endraw %}{% if not initial_iac_management_deploy_occurred %}{% raw %}
+"""Identity center Pulumi stack package.{% if not initial_iac_management_deploy_occurred %}
 
-NOTE: The `initial_iac_management_deploy_occurred` copier question is still False. The `lib` subpackage exists so its constants and helpers can be imported by other modules, but the identity-center Pulumi stack cannot be deployed until that flag is switched to True.{% endraw %}{% endif %}{% raw %}
-"""{% endraw %}
+NOTE: The `initial_iac_management_deploy_occurred` copier question is still False. The `lib` subpackage exists so its constants and helpers can be imported by other modules, but the identity-center Pulumi stack cannot be deployed until that flag is switched to True.
+{% endif %}"""
