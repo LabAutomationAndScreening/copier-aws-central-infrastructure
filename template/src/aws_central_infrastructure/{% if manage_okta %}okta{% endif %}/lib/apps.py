@@ -27,7 +27,7 @@ class SamlAppConfig(BaseModel):
     @property
     def saml_attribute_statements(self) -> list[SamlAttributeStatementArgs]:
         for attribute in self.custom_saml_attributes:
-            if attribute.filter_type or attribute.filter_value:
+            if attribute.filter_type or attribute.filter_value:  # pyrefly: ignore[not-callable]  # TODO: investigate why pyrefly treats these Pulumi Input fields as non-callable Output[Any] in a boolean check
                 assert attribute.type == "GROUP", (
                     f"Only attributes of type 'GROUP' can have filter_type or filter_value. Error in attribute {attribute.name}"
                 )

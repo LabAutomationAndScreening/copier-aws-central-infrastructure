@@ -1,3 +1,4 @@
+from collections.abc import MutableSequence
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 from typing import Literal
@@ -25,7 +26,9 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
-from aws_central_infrastructure.artifact_stores.internal_packages import create_internal_packages_configs
+from aws_central_infrastructure.artifact_stores.internal_packages import (
+    create_internal_packages_configs,
+)
 from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_REPO_NAME
 
 from .constants import ACTIVELY_IMPORT_AWS_ORG_REPOS
@@ -88,7 +91,11 @@ class GithubRepoConfig(BaseModel):
 
 class GithubRepo(ComponentResource):
     def __init__(self, *, config: GithubRepoConfig, provider: Provider | None = None):
-        super().__init__("labauto:GithubRepo", append_resource_suffix(config.name, max_length=150), None)
+        super().__init__(
+            "labauto:GithubRepo",
+            append_resource_suffix(config.name, max_length=150),
+            None,
+        )
         if config.create_repo:
             repo_topics = ["managed-by-aws-central-infrastructure-iac-repo"]
             repo_topics += config.topics
@@ -171,7 +178,7 @@ class GithubRepo(ComponentResource):
                 opts=ResourceOptions(parent=self, provider=provider),
             )
 
-        bypass_actors: Sequence[RepositoryRulesetBypassActorArgs] = []
+        bypass_actors: MutableSequence[RepositoryRulesetBypassActorArgs] = []
         if config.org_admin_rule_bypass:
             bypass_actors.append(
                 RepositoryRulesetBypassActorArgs(
