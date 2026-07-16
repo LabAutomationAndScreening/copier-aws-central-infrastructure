@@ -16,9 +16,7 @@ from pydantic import BaseModel
 from pydantic import Field
 
 from aws_central_infrastructure.artifact_stores.lib import EXTERNAL_CREDS_SECRET_PREFIX
-from aws_central_infrastructure.iac_management.lib.constants import (
-    CENTRAL_INFRA_PROD_ACCOUNT_ID,
-)
+from aws_central_infrastructure.iac_management.lib.constants import CENTRAL_INFRA_PROD_ACCOUNT_ID
 
 from .constants import LOW_RISK_ACCOUNT_ADMIN_ACCESS_PERMISSION_SET_NAME
 from .lib import create_inline_view_only_policy
