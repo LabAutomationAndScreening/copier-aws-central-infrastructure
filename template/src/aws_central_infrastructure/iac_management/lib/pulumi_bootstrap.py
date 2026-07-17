@@ -85,16 +85,17 @@ class AwsWorkloadPulumiBootstrap(ComponentResource):
         ]
         self.providers = create_providers(aws_accounts=all_accounts, parent=self)
         for account in all_accounts:
+            shared_opts = ResourceOptions(
+                provider=self.providers[account.id],
+                delete_before_replace=True,
+                parent=self,
+            )
             _ = ssm.Parameter(
                 f"central-infra-state-bucket-name-in-{account.name}",
                 type=ssm.ParameterType.STRING,
                 name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/infra-state-bucket-name",
                 value=central_state_bucket_name,
-                opts=ResourceOptions(
-                    provider=self.providers[account.id],
-                    parent=self,
-                    delete_before_replace=True,
-                ),
+                opts=shared_opts,
                 tags=common_tags(),
             )
             _ = ssm.Parameter(
@@ -102,11 +103,7 @@ class AwsWorkloadPulumiBootstrap(ComponentResource):
                 type=ssm.ParameterType.STRING,
                 name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/infra-state-kms-key-arn",
                 value=central_iac_kms_key_arn,
-                opts=ResourceOptions(
-                    provider=self.providers[account.id],
-                    parent=self,
-                    delete_before_replace=True,
-                ),
+                opts=shared_opts,
                 tags=common_tags(),
             )
 

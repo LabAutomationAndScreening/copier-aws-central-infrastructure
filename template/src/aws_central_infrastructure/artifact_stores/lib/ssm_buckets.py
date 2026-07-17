@@ -83,8 +83,8 @@ class DistributorPackagesBucket(ComponentResource):
                                     principal_in_org_condition(org_id),
                                     GetPolicyDocumentStatementConditionArgs(
                                         test="StringLike",
-                                        variable="s3:prefix",
                                         values=["${aws:PrincipalAccount}/*"],
+                                        variable="s3:prefix",
                                     ),
                                 ],
                             ),
@@ -125,8 +125,8 @@ class SsmBucketsSsmParameters(ComponentResource):
                 name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/ssm-distributor-packages-bucket-name",
                 value=distributor_packages_bucket.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright thinks somehow the bucket name could be Output[None], which doesn't seem possible
                 opts=ResourceOptions(
-                    provider=self.providers[account.id],
                     parent=self,
+                    provider=self.providers[account.id],
                     delete_before_replace=True,
                 ),
                 tags=common_tags(),
@@ -140,9 +140,9 @@ class SsmBucketsSsmParameters(ComponentResource):
                 name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/manual-artifacts-bucket-name",
                 value=manual_artifacts_bucket.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright thinks somehow the bucket name could be Output[None], which doesn't seem possible
                 opts=ResourceOptions(
+                    delete_before_replace=True,
                     provider=self.providers[account.id],
                     parent=self,
-                    delete_before_replace=True,
                 ),
                 tags=common_tags(),
             )
