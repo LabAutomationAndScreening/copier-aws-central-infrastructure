@@ -16,4 +16,3 @@ def add_okta_user_info(user_info: list[UserInfo]):
         "External users must not appear in main user configs; they would be subjected to wrong policies, access, etc."
     )
     user_info.extend([UserInfo(username=user_config.username) for user_config in all_okta_users])
-
