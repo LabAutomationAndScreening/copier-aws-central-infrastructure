@@ -1,0 +1,18 @@
+from typing import TYPE_CHECKING
+
+from lab_auto_pulumi import UserInfo
+
+from aws_central_infrastructure.okta.lib.constants import OktaUserType
+from aws_central_infrastructure.okta.users import define_user_configs
+
+if TYPE_CHECKING:
+    from aws_central_infrastructure.okta.lib import OktaUserConfig
+
+
+def add_okta_user_info(user_info: list[UserInfo]):
+    all_okta_users: list[OktaUserConfig] = []
+    define_user_configs(all_okta_users)
+    assert all(config.user_type == OktaUserType.DEFAULT for config in all_okta_users), (
+        "External users must not appear in main user configs; they would be subjected to wrong policies, access, etc."
+    )
+    user_info.extend([UserInfo(username=user_config.username) for user_config in all_okta_users])

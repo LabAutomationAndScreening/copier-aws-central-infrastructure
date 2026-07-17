@@ -51,12 +51,18 @@ class Ecr(ComponentResource):
     def __init__(self, *, config: EcrConfig, central_infra_oidc_provider_arn: str, org_id: str):
         super().__init__(
             "labauto:Ecr",
-            append_resource_suffix(config.ecr_repo_full_name_for_resource, max_length=self._max_ecr_name_length),
+            append_resource_suffix(
+                config.ecr_repo_full_name_for_resource,
+                max_length=self._max_ecr_name_length,
+            ),
             None,
         )
 
         self.repository = ecr.Repository(
-            append_resource_suffix(config.ecr_repo_full_name_for_resource, max_length=self._max_ecr_name_length),
+            append_resource_suffix(
+                config.ecr_repo_full_name_for_resource,
+                max_length=self._max_ecr_name_length,
+            ),
             repository_name=config.ecr_repo_full_name_for_arn,
             empty_on_delete=True,  # note, there's an upstream bug in CloudFormation that causes this to not work as expected https://github.com/pulumi/pulumi-aws-native/issues/1270
             image_tag_mutability=ecr.RepositoryImageTagMutability.IMMUTABLE,
@@ -66,7 +72,12 @@ class Ecr(ComponentResource):
                         GetPolicyDocumentStatementArgs(
                             effect="Allow",
                             sid="CrossAccountRead",
-                            actions=["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:DescribeImages"],
+                            actions=[
+                                "ecr:BatchGetImage",
+                                "ecr:GetDownloadUrlForLayer",
+                                "ecr:DescribeImages",
+                                "ecr:ListImages",
+                            ],
                             principals=[
                                 GetPolicyDocumentStatementPrincipalArgs(
                                     type="*",
@@ -90,31 +101,36 @@ class Ecr(ComponentResource):
                 repo_name=config.git_repo_name,
                 restrictions="*",
                 role_name=f"GHA-ECR-Push-{config.ecr_repo_full_name_for_resource}",
-                role_policy=iam.RolePolicyArgs(
-                    policy_name="PushToEcr",
-                    policy_document=self.repository.arn.apply(
-                        lambda ecr_arn: (
-                            get_policy_document(
-                                statements=[
-                                    ECR_AUTH_STATEMENT,
-                                    ECR_PULL_STATEMENT,
-                                    GetPolicyDocumentStatementArgs(
-                                        effect="Allow",
-                                        sid="ImagePush",
-                                        actions=[
-                                            "ecr:BatchCheckLayerAvailability",
-                                            "ecr:InitiateLayerUpload",
-                                            "ecr:UploadLayerPart",
-                                            "ecr:CompleteLayerUpload",
-                                            "ecr:PutImage",
-                                        ],
-                                        resources=[ecr_arn],
-                                    ),
-                                ]
-                            ).json
-                        )
-                    ),
-                ),
+                role_policies=[
+                    iam.RolePolicyArgs(
+                        policy_name="PushToEcr",
+                        policy_document=self.repository.arn.apply(
+                            lambda ecr_arn: (
+                                get_policy_document(
+                                    statements=[
+                                        ECR_AUTH_STATEMENT,
+                                        ECR_PULL_STATEMENT,
+                                        # pylint: disable=duplicate-code
+                                        # TODO: decide whether ECR policy statements belong in a shared library
+                                        GetPolicyDocumentStatementArgs(
+                                            effect="Allow",
+                                            sid="ImagePush",
+                                            actions=[
+                                                "ecr:BatchCheckLayerAvailability",
+                                                "ecr:InitiateLayerUpload",
+                                                "ecr:UploadLayerPart",
+                                                "ecr:CompleteLayerUpload",
+                                                "ecr:PutImage",
+                                            ],
+                                            resources=[ecr_arn],
+                                        ),
+                                        # pylint: enable=duplicate-code
+                                    ]
+                                ).json
+                            )
+                        ),
+                    )
+                ],
             ).create_role(provider_arn=central_infra_oidc_provider_arn, parent=self)
 
 
@@ -125,4 +141,8 @@ def create_ecrs(*, ecr_configs: list[EcrConfig], central_infra_oidc_provider_arn
             ecr_repo_name="manual-artifacts"
         ),
     ]:
-        _ = Ecr(config=config, central_infra_oidc_provider_arn=central_infra_oidc_provider_arn, org_id=org_id)
+        _ = Ecr(
+            config=config,
+            central_infra_oidc_provider_arn=central_infra_oidc_provider_arn,
+            org_id=org_id,
+        )

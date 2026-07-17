@@ -1,3 +1,10 @@
+# ============== WARNING ==============================================================================
+# File is managed by copier template: gh:LabAutomationAndScreening/copier-base-template.git
+# See .config/.copier-managed-files.json for details.
+#
+# You are welcome to make changes to this file in your repo if they are custom to your project,
+# but if the change should be shared with other projects, please backport it to the template repo.
+# =====================================================================================================
 # Data managed by upstream template
 repo_name: another_repo
 repo_org_name: initech
@@ -41,3 +48,4 @@ import_github_aws_org_repos: true
 finished_importing_github_aws_org_repos: true
 allow_admin_rule_bypass_for_github_aws_org_repos: true
 create_private_subnet: false
+create_central_networking_hosted_zone: false

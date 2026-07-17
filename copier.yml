@@ -1,3 +1,10 @@
+# ============== WARNING ==============================================================================
+# File is managed by copier template: gh:LabAutomationAndScreening/copier-base-template.git
+# See .config/.copier-managed-files.json for details.
+#
+# You are welcome to make changes to this file in your repo if they are custom to your project,
+# but if the change should be shared with other projects, please backport it to the template repo.
+# =====================================================================================================
 # Questions specific to this template
 
 
@@ -139,6 +146,11 @@ okta_org_name:
     help: What's the okta org name?
     when: "{{ manage_okta }}"
 
+company_email_domain:
+    type: str
+    help: What's the company email domain?
+    when: "{{ manage_okta }}"
+
 okta_tokens_created:
     type: bool
     help: Has a merge to main already occurred that created the AWS Secrets to hold the Okta API tokens and have those API tokens been manually entered into Secrets Manager?
@@ -196,6 +208,11 @@ create_private_subnet:
     help: Do you want to create a private subnet with a NAT Gateway within the central networking VPC (this will incur costs...around $30/month)?
     default: no
 
+create_central_networking_hosted_zone:
+    type: bool
+    help: Do you want to create a Route53 hosted zone in the central networking account for shared DNS management across the organization (this will incur costs, around $1/month)?
+    default: no
+
 configure_cloud_courier:
     type: bool
     help: Should Identity Center permissions be automatically configured to facilitate using Cloud Courier?
@@ -234,7 +251,7 @@ _tasks:
             fi
         fi
   - command: |
-        for script in .claude/skills/address-pr-comments/check-footer.py .claude/skills/address-pr-comments/fetch-pr-comments.py .claude/skills/address-pr-comments/post-reply.py; do
+        for script in .claude/skills/address-pr-comments/check-footer.py .claude/skills/address-pr-comments/commit-link.py .claude/skills/address-pr-comments/fetch-pr-comments.py .claude/skills/address-pr-comments/post-reply.py .claude/skills/address-pr-comments/verify-env.py; do
             if [ -f "$script" ]; then
                 chmod +x "$script"
                 if git ls-files --error-unmatch "$script" > /dev/null 2>&1; then
@@ -243,17 +260,33 @@ _tasks:
             fi
         done
   - command: |
-        if [ -f ruff.toml ]; then
+        for script in .claude/skills/fix-mutants/check-results.py .claude/skills/fix-mutants/group-by-line.py .claude/skills/fix-mutants/list-survived.py .claude/skills/fix-mutants/run-mutmut.py .claude/skills/fix-mutants/show-mutant.py .claude/skills/fix-mutants/verify-mutant.py; do
+            if [ -f "$script" ]; then
+                chmod +x "$script"
+                if git ls-files --error-unmatch "$script" > /dev/null 2>&1; then
+                    git update-index --chmod=+x "$script"
+                fi
+            fi
+        done
+  - command: |
+        if [ -f .config/ruff.toml ]; then
             echo "Updating ruff target-version from python_version..."
             py_major_minor="$(printf '%s' '{{ python_version }}' | cut -d. -f1,2)"
             py_tag="py$(printf '%s' "$py_major_minor" | tr -d '.')"
-            sed -i -E 's/^target-version = "py[0-9]+"/target-version = "'"$py_tag"'"/' ruff.toml
+            sed -i -E 's/^target-version = "py[0-9]+"/target-version = "'"$py_tag"'"/' .config/ruff.toml
         else
-            echo "ruff.toml not found; skipping Ruff target-version update."
+            echo ".config/ruff.toml not found; skipping Ruff target-version update."
         fi
+  - command: |
+        python3 '{{ _copier_conf.src_path }}/src/copier_tasks/copier_provenance.py' \
+            '{{ _copier_conf.src_path }}/template' \
+            '.' \
+            --template-src '{{ _src_path }}'
 
 # Additional Settings
 _min_copier_version: "9.8"
+
+_answers_file: ".config/.copier-answers.yml"
 
 _subdirectory: template
 

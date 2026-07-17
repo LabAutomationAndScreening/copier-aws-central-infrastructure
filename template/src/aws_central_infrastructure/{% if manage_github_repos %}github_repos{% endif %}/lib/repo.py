@@ -1,3 +1,5 @@
+import re
+from collections.abc import MutableSequence
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 from typing import Literal
@@ -28,7 +30,6 @@ from pydantic import Field
 from aws_central_infrastructure.artifact_stores.internal_packages import create_internal_packages_configs
 from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_REPO_NAME
 
-from .constants import ACTIVELY_IMPORT_AWS_ORG_REPOS
 from .constants import ALLOW_ADMIN_BYPASS_FOR_AWS_ORG_REPOS
 from .constants import AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED
 from .constants import AWS_ORGANIZATION_REPO_NAME
@@ -84,11 +85,42 @@ class GithubRepoConfig(BaseModel):
         default=None,
         description="When left as None, this just uses the boolean flags for allow_merge_commit etc. But it can be set to an explicit list, usually in an attempt to prevent all types of merge commits and only allow fast-forward merges ('merge' cannot be allowed as a value here in that case, typically 'rebase' is used for this field)",
     )
+    additional_protected_branches: list[str] = Field(
+        default_factory=list,
+        description="Branch names or fnmatch globs (e.g. 'development', 'release/*') that should receive the SAME protection ruleset as the default branch. Used by repos following a gitflow SDLC. Each entry is matched as refs/heads/<entry>.",
+    )
+
+
+def _branch_ruleset_targets(
+    config: GithubRepoConfig,
+) -> list[tuple[str, str, list[str]]]:
+    targets: list[tuple[str, str, list[str]]] = [
+        (config.name, "Protect Default Branch", ["~DEFAULT_BRANCH"]),
+    ]
+    seen_suffixes = {config.name}
+    for index, branch in enumerate(config.additional_protected_branches):
+        sanitized = re.sub(r"[^A-Za-z0-9_.-]+", "-", branch).strip("-")
+        suffix = f"{config.name}-{sanitized}"
+        if suffix in seen_suffixes:
+            suffix = f"{config.name}-{index}-{sanitized}"
+        seen_suffixes.add(suffix)
+        targets.append((suffix, f"Protect {branch} Branch", [f"refs/heads/{branch}"]))
+    return targets
 
 
 class GithubRepo(ComponentResource):
-    def __init__(self, *, config: GithubRepoConfig, provider: Provider | None = None):
-        super().__init__("labauto:GithubRepo", append_resource_suffix(config.name, max_length=150), None)
+    def __init__(
+        self,
+        *,
+        config: GithubRepoConfig,
+        global_autolinks: set[AutoLinkConfig],
+        provider: Provider | None = None,
+    ):
+        super().__init__(
+            "labauto:GithubRepo",
+            append_resource_suffix(config.name, max_length=150),
+            None,
+        )
         if config.create_repo:
             repo_topics = ["managed-by-aws-central-infrastructure-iac-repo"]
             repo_topics += config.topics
@@ -171,7 +203,7 @@ class GithubRepo(ComponentResource):
                 opts=ResourceOptions(parent=self, provider=provider),
             )
 
-        bypass_actors: Sequence[RepositoryRulesetBypassActorArgs] = []
+        bypass_actors: MutableSequence[RepositoryRulesetBypassActorArgs] = []
         if config.org_admin_rule_bypass:
             bypass_actors.append(
                 RepositoryRulesetBypassActorArgs(
@@ -189,41 +221,42 @@ class GithubRepo(ComponentResource):
                 )
             )
         conditional_repo_depends = [] if not config.create_repo else [repo]  # type: ignore[reportPossiblyUnboundVariable] # this is a false positive, due to the conditionals in this ternary and the logic above
-        _ = RepositoryRuleset(
-            append_resource_suffix(config.name, max_length=150),
-            bypass_actors=bypass_actors
-            or None,  # supplying an empty list seems to cause problems, so explicitly pass None if no bypass
-            name="Protect Default Branch",
-            repository=config.name,
-            target="branch",
-            enforcement="active",
-            conditions=RepositoryRulesetConditionsArgs(
-                ref_name=RepositoryRulesetConditionsRefNameArgs(includes=["~DEFAULT_BRANCH"], excludes=[])
-            ),
-            rules=RepositoryRulesetRulesArgs(
-                deletion=True,
-                non_fast_forward=True,
-                required_status_checks=RepositoryRulesetRulesRequiredStatusChecksArgs(
-                    required_checks=[
-                        RepositoryRulesetRulesRequiredStatusChecksRequiredCheckArgs(
-                            context="required-check",
-                            integration_id=15368,  # the ID for Github Actions
-                        )
-                    ],
-                    strict_required_status_checks_policy=config.require_branch_to_be_up_to_date_before_merge,
+        for resource_suffix, ruleset_name, includes in _branch_ruleset_targets(config):
+            _ = RepositoryRuleset(
+                append_resource_suffix(resource_suffix, max_length=150),
+                bypass_actors=bypass_actors
+                or None,  # supplying an empty list seems to cause problems, so explicitly pass None if no bypass
+                name=ruleset_name,
+                repository=config.name,
+                target="branch",
+                enforcement="active",
+                conditions=RepositoryRulesetConditionsArgs(
+                    ref_name=RepositoryRulesetConditionsRefNameArgs(includes=includes, excludes=[])
                 ),
-                pull_request=RepositoryRulesetRulesPullRequestArgs(
-                    allowed_merge_methods=config.allowed_merge_methods,
-                    dismiss_stale_reviews_on_push=True,
-                    require_last_push_approval=True,
-                    required_approving_review_count=1,
-                    require_code_owner_review=config.require_code_owner_review,
+                rules=RepositoryRulesetRulesArgs(
+                    deletion=True,
+                    non_fast_forward=True,
+                    required_status_checks=RepositoryRulesetRulesRequiredStatusChecksArgs(
+                        required_checks=[
+                            RepositoryRulesetRulesRequiredStatusChecksRequiredCheckArgs(
+                                context="required-check",
+                                integration_id=15368,  # the ID for Github Actions
+                            )
+                        ],
+                        strict_required_status_checks_policy=config.require_branch_to_be_up_to_date_before_merge,
+                    ),
+                    pull_request=RepositoryRulesetRulesPullRequestArgs(
+                        allowed_merge_methods=config.allowed_merge_methods,
+                        dismiss_stale_reviews_on_push=True,
+                        require_last_push_approval=True,
+                        required_approving_review_count=1,
+                        require_code_owner_review=config.require_code_owner_review,
+                    ),
                 ),
-            ),
-            opts=ResourceOptions(provider=provider, parent=self, depends_on=conditional_repo_depends),
-        )
+                opts=ResourceOptions(provider=provider, parent=self, depends_on=conditional_repo_depends),
+            )
 
-        autolinks = GLOBAL_AUTOLINKS | set(config.autolink_references)
+        autolinks = global_autolinks | set(config.autolink_references)
 
         for autolink in autolinks:
             _ = RepositoryAutolinkReference(
@@ -235,12 +268,20 @@ class GithubRepo(ComponentResource):
             )
 
 
-def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Provider) -> None:
+def create_repos(
+    *,
+    configs: list[GithubRepoConfig] | None = None,
+    provider: Provider,
+    include_aws_org_repos: bool = False,
+    include_internal_packages: bool = True,
+    global_autolinks: set[AutoLinkConfig] | None = None,
+) -> None:
     if configs is None:
         configs = []
     if not configs:
         return
-    if ACTIVELY_IMPORT_AWS_ORG_REPOS or AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED:
+    resolved_autolinks = GLOBAL_AUTOLINKS if global_autolinks is None else global_autolinks
+    if include_aws_org_repos:
         default_imported_repo_config = (  # these are the typical default github settings, so use these when importing a repo
             GithubRepoConfig(
                 name="na",
@@ -274,12 +315,13 @@ def create_repos(*, configs: list[GithubRepoConfig] | None = None, provider: Pro
                 ),
             ]
         )
-    package_claims_list: list[RepoPackageClaims] = []
-    create_internal_packages_configs(package_claims_list)
-    for package_claim in package_claims_list:
-        for config in configs:
-            if config.name == package_claim.repo_name:
-                config.create_pypi_publishing_environments = True
-                break
+    if include_internal_packages:
+        package_claims_list: list[RepoPackageClaims] = []
+        create_internal_packages_configs(package_claims_list)
+        for package_claim in package_claims_list:
+            for config in configs:
+                if config.name == package_claim.repo_name:
+                    config.create_pypi_publishing_environments = True
+                    break
     for config in configs:
-        _ = GithubRepo(config=config, provider=provider)
+        _ = GithubRepo(config=config, global_autolinks=resolved_autolinks, provider=provider)

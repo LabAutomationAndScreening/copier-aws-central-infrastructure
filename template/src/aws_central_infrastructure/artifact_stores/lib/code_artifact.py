@@ -123,7 +123,11 @@ class CentralCodeArtifact(ComponentResource):
                 opts=ResourceOptions(parent=self),
                 tags=common_tags_native(),
             )
-            for upstream_type, connection_name in (("pypi", "pypi"), ("npm", "npmjs"), ("nuget", "nuget-org"))
+            for upstream_type, connection_name in (
+                ("pypi", "pypi"),
+                ("npm", "npmjs"),
+                ("nuget", "nuget-org"),
+            )
         ]
         self.primary_repo = codeartifact.Repository(
             append_resource_suffix("primary"),
@@ -191,10 +195,12 @@ class RepoPublishingRoles(ComponentResource):
             repo_org=package_claims.repo_org,
             repo_name=package_claims.repo_name,
             role_name=f"GHA-CA-Staging-{package_claims.repo_name}",
-            role_policy=iam.RolePolicyArgs(
-                policy_name="PublishPackagesToCodeArtifact",
-                policy_document=self._create_role_policy_document().json,
-            ),
+            role_policies=[
+                iam.RolePolicyArgs(
+                    policy_name="PublishPackagesToCodeArtifact",
+                    policy_document=self._create_role_policy_document().json,
+                )
+            ],
         ).create_role(provider_arn=self._central_infra_oidc_provider_arn, parent=self)
 
         _ = GithubOidcConfig(
@@ -203,10 +209,12 @@ class RepoPublishingRoles(ComponentResource):
             repo_name=package_claims.repo_name,
             restrictions="refs/heads/main",  # TODO: consider creating a publishing environment within GitHub and using that
             role_name=f"GHA-CA-Primary-{package_claims.repo_name}",
-            role_policy=iam.RolePolicyArgs(
-                policy_name="PublishPackagesToCodeArtifact",
-                policy_document=self._create_role_policy_document(for_primary=True).json,
-            ),
+            role_policies=[
+                iam.RolePolicyArgs(
+                    policy_name="PublishPackagesToCodeArtifact",
+                    policy_document=self._create_role_policy_document(for_primary=True).json,
+                )
+            ],
         ).create_role(provider_arn=self._central_infra_oidc_provider_arn, parent=self)
 
     def _create_role_policy_document(self, *, for_primary: bool = False) -> Output[GetPolicyDocumentResult]:

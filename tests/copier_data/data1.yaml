@@ -1,3 +1,10 @@
+# ============== WARNING ==============================================================================
+# File is managed by copier template: gh:LabAutomationAndScreening/copier-base-template.git
+# See .config/.copier-managed-files.json for details.
+#
+# You are welcome to make changes to this file in your repo if they are custom to your project,
+# but if the change should be shared with other projects, please backport it to the template repo.
+# =====================================================================================================
 # Data managed by upstream template
 repo_name: the_best_repo
 repo_org_name: great-company
@@ -27,6 +34,8 @@ identity_center_production_account_id: 023202320444
 configure_cloud_courier: false
 manage_okta: true
 okta_org_name: my-okta-org
+company_email_domain: blah.org
 okta_tokens_created: false
 manage_github_repos: false
 create_private_subnet: true
+create_central_networking_hosted_zone: true

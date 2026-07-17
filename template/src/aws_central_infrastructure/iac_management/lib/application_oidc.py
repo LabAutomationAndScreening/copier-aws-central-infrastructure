@@ -53,15 +53,17 @@ def generate_all_oidc(
             role_name="CoreInfraBaseAccess",
             repo_org=CENTRAL_INFRA_GITHUB_ORG_NAME,
             repo_name="*",
-            role_policy=iam.RolePolicyArgs(
-                policy_name="ReadFromCentralArtifactStores",
-                policy_document=get_policy_document(
-                    statements=[
-                        CODE_ARTIFACT_SERVICE_BEARER_STATEMENT,
-                        *PULL_FROM_CENTRAL_ECRS_STATEMENTS,
-                    ]
-                ).json,
-            ),
+            role_policies=[
+                iam.RolePolicyArgs(
+                    policy_name="ReadFromCentralArtifactStores",
+                    policy_document=get_policy_document(
+                        statements=[
+                            CODE_ARTIFACT_SERVICE_BEARER_STATEMENT,
+                            *PULL_FROM_CENTRAL_ECRS_STATEMENTS,
+                        ]
+                    ).json,
+                ),
+            ],
         ),
     )
     generate_oidc(workloads_info=workloads_info, all_oidc=all_oidc)

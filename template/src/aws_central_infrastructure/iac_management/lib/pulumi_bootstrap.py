@@ -3,7 +3,7 @@ import logging
 import pulumi_aws
 from ephemeral_pulumi_deploy import get_config_str
 from ephemeral_pulumi_deploy.utils import common_tags
-from lab_auto_pulumi import ORG_MANAGED_SSM_PARAM_PREFIX
+from lab_auto_pulumi import ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX
 from lab_auto_pulumi import AwsAccountId
 from lab_auto_pulumi import AwsAccountInfo
 from lab_auto_pulumi import AwsLogicalWorkload
@@ -78,23 +78,32 @@ class AwsWorkloadPulumiBootstrap(ComponentResource):
         central_iac_kms_key_arn: str,
     ):
         super().__init__("labauto:AwsWorkloadPulumiBootstrap", workload.name, None)
-        all_accounts = [*workload.prod_accounts, *workload.staging_accounts, *workload.dev_accounts]
+        all_accounts = [
+            *workload.prod_accounts,
+            *workload.staging_accounts,
+            *workload.dev_accounts,
+        ]
         self.providers = create_providers(aws_accounts=all_accounts, parent=self)
         for account in all_accounts:
+            shared_opts = ResourceOptions(
+                provider=self.providers[account.id],
+                delete_before_replace=True,
+                parent=self,
+            )
             _ = ssm.Parameter(
                 f"central-infra-state-bucket-name-in-{account.name}",
                 type=ssm.ParameterType.STRING,
-                name=f"{ORG_MANAGED_SSM_PARAM_PREFIX}/infra-state-bucket-name",
+                name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/infra-state-bucket-name",
                 value=central_state_bucket_name,
-                opts=ResourceOptions(provider=self.providers[account.id], parent=self, delete_before_replace=True),
+                opts=shared_opts,
                 tags=common_tags(),
             )
             _ = ssm.Parameter(
                 f"shared-kms-key-arn-in-{account.name}",
                 type=ssm.ParameterType.STRING,
-                name=f"{ORG_MANAGED_SSM_PARAM_PREFIX}/infra-state-kms-key-arn",
+                name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/infra-state-kms-key-arn",
                 value=central_iac_kms_key_arn,
-                opts=ResourceOptions(provider=self.providers[account.id], parent=self, delete_before_replace=True),
+                opts=shared_opts,
                 tags=common_tags(),
             )
 
@@ -128,10 +137,14 @@ def create_bucket_policy(bucket_name: str) -> str:
                 resources=[f"arn:aws:s3:::{bucket_name}"],
                 conditions=[
                     GetPolicyDocumentStatementConditionArgs(
-                        test="StringEquals", variable="aws:PrincipalOrgID", values=[org_id]
+                        test="StringEquals",
+                        variable="aws:PrincipalOrgID",
+                        values=[org_id],
                     ),
                     GetPolicyDocumentStatementConditionArgs(
-                        test="StringLike", variable="s3:prefix", values=["${aws:PrincipalAccount}/*"]
+                        test="StringLike",
+                        variable="s3:prefix",
+                        values=["${aws:PrincipalAccount}/*"],
                     ),
                 ],
             ),

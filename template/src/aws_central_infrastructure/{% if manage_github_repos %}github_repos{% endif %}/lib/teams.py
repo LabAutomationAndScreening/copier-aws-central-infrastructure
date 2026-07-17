@@ -12,12 +12,6 @@ from pulumi_github import TeamRepository
 from pydantic import BaseModel
 from pydantic import Field
 
-from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_GITHUB_ORG_NAME
-from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_REPO_NAME
-
-from .constants import AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED
-from .constants import AWS_ORGANIZATION_REPO_NAME
-
 type RepositoryName = str
 type GithubRepositoryPermission = Literal["pull", "triage", "push", "maintain", "admin"]
 
@@ -27,11 +21,11 @@ class GithubOrgMembers(BaseModel):
     everyone: list[str] = Field(default_factory=list)
 
 
-def ensure_full_repo_name(repo_name: str) -> str:
+def ensure_full_repo_name(repo_name: str, *, org_name: str) -> str:
     if "/" in repo_name:
         return repo_name
 
-    return f"{CENTRAL_INFRA_GITHUB_ORG_NAME}/{repo_name}"
+    return f"{org_name}/{repo_name}"
 
 
 class GithubTeamConfig(BaseModel):
@@ -71,7 +65,13 @@ class GithubTeamConfig(BaseModel):
 
 
 class GithubTeam(ComponentResource):
-    def __init__(self, *, config: GithubTeamConfig, provider: Provider | None = None):
+    def __init__(
+        self,
+        *,
+        config: GithubTeamConfig,
+        org_name: str,
+        provider: Provider | None = None,
+    ):
         super().__init__("labauto:GithubTeam", append_resource_suffix(config.name), None)
         self._config = config
         team = Team(
@@ -91,7 +91,7 @@ class GithubTeam(ComponentResource):
             opts=self.default_opts,
         )
         for repo_name, permission in config.repo_permissions.items():
-            full_repo_name = ensure_full_repo_name(repo_name)
+            full_repo_name = ensure_full_repo_name(repo_name, org_name=org_name)
             _ = TeamRepository(
                 append_resource_suffix(
                     f"{config.slug}-{full_repo_name.replace('/', '-')}",
@@ -127,7 +127,11 @@ def _validate_team_members_in_org(configs: list[GithubTeamConfig], org_members: 
 
 
 def fully_configure_teams(
-    *, configs: list[GithubTeamConfig], org_members: GithubOrgMembers, root_team: GithubTeamConfig
+    *,
+    configs: list[GithubTeamConfig],
+    org_members: GithubOrgMembers,
+    root_team: GithubTeamConfig,
+    root_team_push_repos: list[str] | None = None,
 ) -> None:
     _validate_team_members_in_org(configs, org_members)
 
@@ -144,24 +148,30 @@ def fully_configure_teams(
     configs.insert(0, root_team)
     root_team.maintainers.extend(org_members.org_admins)
     root_team.members.extend(org_members.everyone)
-    if AWS_ORG_REPOS_SUCCESSFULLY_IMPORTED:
-        for repo_name in (CENTRAL_INFRA_REPO_NAME, AWS_ORGANIZATION_REPO_NAME):
-            root_team.repo_permissions[repo_name] = "push"
+    for repo_name in root_team_push_repos or []:
+        root_team.repo_permissions[repo_name] = "push"
 
 
-def create_teams(
+def create_teams(  # noqa: PLR0913 # this is a lot of arguments, but they're all kwargs
     *,
     configs: list[GithubTeamConfig],
     provider: Provider,
     org_members: GithubOrgMembers,
     root_team: GithubTeamConfig,
+    org_name: str,
+    root_team_push_repos: list[str] | None = None,
 ) -> None:
     # Additional Token permissions needed beyond repo: Organization-Members Read/Write
-    fully_configure_teams(configs=configs, org_members=org_members, root_team=root_team)
+    fully_configure_teams(
+        configs=configs,
+        org_members=org_members,
+        root_team=root_team,
+        root_team_push_repos=root_team_push_repos,
+    )
 
     # TODO: confirm all team slugs are unique
     # TODO: confirm there's no duplicate repos listed in the GithubTeamConfig repo permissions (prefer over dict so that there's no silent overriding of permissions)
     for config in configs:
         if config.parent_team is None and config is not root_team:
             config.parent_team = root_team
-        _ = GithubTeam(config=config, provider=provider)
+        _ = GithubTeam(config=config, org_name=org_name, provider=provider)

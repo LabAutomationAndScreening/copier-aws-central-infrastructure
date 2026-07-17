@@ -2,7 +2,7 @@ import logging
 
 from ephemeral_pulumi_deploy import append_resource_suffix
 from ephemeral_pulumi_deploy import common_tags
-from lab_auto_pulumi import ORG_MANAGED_SSM_PARAM_PREFIX
+from lab_auto_pulumi import ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX
 from lab_auto_pulumi import AwsLogicalWorkload
 from lab_auto_pulumi import ManualArtifactsBucket
 from lab_auto_pulumi import create_worm_bucket
@@ -82,7 +82,9 @@ class DistributorPackagesBucket(ComponentResource):
                                     ),
                                     principal_in_org_condition(org_id),
                                     GetPolicyDocumentStatementConditionArgs(
-                                        test="StringLike", variable="s3:prefix", values=["${aws:PrincipalAccount}/*"]
+                                        test="StringLike",
+                                        values=["${aws:PrincipalAccount}/*"],
+                                        variable="s3:prefix",
                                     ),
                                 ],
                             ),
@@ -101,35 +103,55 @@ class SsmBucketsSsmParameters(ComponentResource):
         distributor_packages_bucket: DistributorPackagesBucket,
         manual_artifacts_bucket: ManualArtifactsBucket,
     ):
-        super().__init__("labauto:SsmBucketsSsmParameters", append_resource_suffix(workload_info.name), None)
-        all_accounts = [*workload_info.prod_accounts, *workload_info.staging_accounts, *workload_info.dev_accounts]
+        super().__init__(
+            "labauto:SsmBucketsSsmParameters",
+            append_resource_suffix(workload_info.name),
+            None,
+        )
+        all_accounts = [
+            *workload_info.prod_accounts,
+            *workload_info.staging_accounts,
+            *workload_info.dev_accounts,
+        ]
         for account in all_accounts:
             self.providers = create_providers(aws_accounts=[account], parent=self)
 
             _ = ssm.Parameter(
                 append_resource_suffix(
-                    f"distributor-packages-bucket-name-{workload_info.name}-{account.id}", max_length=100
+                    f"distributor-packages-bucket-name-{workload_info.name}-{account.id}",
+                    max_length=100,
                 ),
                 type=ssm.ParameterType.STRING,
-                name=f"{ORG_MANAGED_SSM_PARAM_PREFIX}/ssm-distributor-packages-bucket-name",
+                name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/ssm-distributor-packages-bucket-name",
                 value=distributor_packages_bucket.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright thinks somehow the bucket name could be Output[None], which doesn't seem possible
-                opts=ResourceOptions(provider=self.providers[account.id], parent=self, delete_before_replace=True),
+                opts=ResourceOptions(
+                    parent=self,
+                    provider=self.providers[account.id],
+                    delete_before_replace=True,
+                ),
                 tags=common_tags(),
             )
             _ = ssm.Parameter(
                 append_resource_suffix(
-                    f"manual-artifacts-bucket-name-{workload_info.name}-{account.id}", max_length=100
+                    f"manual-artifacts-bucket-name-{workload_info.name}-{account.id}",
+                    max_length=100,
                 ),
                 type=ssm.ParameterType.STRING,
-                name=f"{ORG_MANAGED_SSM_PARAM_PREFIX}/manual-artifacts-bucket-name",
+                name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/manual-artifacts-bucket-name",
                 value=manual_artifacts_bucket.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright thinks somehow the bucket name could be Output[None], which doesn't seem possible
-                opts=ResourceOptions(provider=self.providers[account.id], parent=self, delete_before_replace=True),
+                opts=ResourceOptions(
+                    delete_before_replace=True,
+                    provider=self.providers[account.id],
+                    parent=self,
+                ),
                 tags=common_tags(),
             )
 
 
 def create_ssm_bucket_ssm_params(
-    *, distributor_packages_bucket: DistributorPackagesBucket, manual_artifacts_bucket: ManualArtifactsBucket
+    *,
+    distributor_packages_bucket: DistributorPackagesBucket,
+    manual_artifacts_bucket: ManualArtifactsBucket,
 ) -> None:
     workloads_dict, _ = load_workload_info()
     for workload_info in workloads_dict.values():

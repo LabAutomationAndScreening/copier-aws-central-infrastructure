@@ -30,6 +30,7 @@ configure_cloud_courier: true
 cloud_courier_infra_repo_name: my-cloud-courier-infra
 manage_okta: true
 okta_org_name: your-okta-org
+company_email_domain: initech.com
 okta_tokens_created: true
 manage_github_repos: true
 initial_github_admin: ada-lovelace
@@ -40,3 +41,4 @@ import_github_aws_org_repos: true
 finished_importing_github_aws_org_repos: false
 allow_admin_rule_bypass_for_github_aws_org_repos: false
 create_private_subnet: false
+create_central_networking_hosted_zone: true
