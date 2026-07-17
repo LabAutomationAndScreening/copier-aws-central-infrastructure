@@ -1,5 +1,4 @@
 import re
-from collections.abc import MutableSequence
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 from typing import Literal
@@ -203,7 +202,7 @@ class GithubRepo(ComponentResource):
                 opts=ResourceOptions(parent=self, provider=provider),
             )
 
-        bypass_actors: MutableSequence[RepositoryRulesetBypassActorArgs] = []
+        bypass_actors: Sequence[RepositoryRulesetBypassActorArgs] = []
         if config.org_admin_rule_bypass:
             bypass_actors.append(
                 RepositoryRulesetBypassActorArgs(
