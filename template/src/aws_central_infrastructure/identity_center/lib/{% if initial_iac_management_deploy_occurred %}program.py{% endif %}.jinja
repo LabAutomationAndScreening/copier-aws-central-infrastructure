@@ -2,7 +2,9 @@
 
 from ephemeral_pulumi_deploy import get_aws_account_id
 from ephemeral_pulumi_deploy import get_config
+from lab_auto_pulumi import ORG_INFO
 from pulumi import export
+from pulumi_aws import ssoadmin
 
 from aws_central_infrastructure.iac_management.lib.workload_params import load_workload_info
 
@@ -27,6 +29,28 @@ def pulumi_program() -> None:
     create_users()
     for perm_set_container in ALL_PERM_SET_CONTAINERS:
         _ = perm_set_container.create_permission_set()
+
+    # Map Identity Center attributes as session tags for ABAC policies.
+    # These use the native Identity Center ABAC mechanism, SAML attribute passing is also
+    # possible but is not as nice since they do not show up on the console for verification
+    _ = ssoadmin.InstanceAccessControlAttributes(
+        "abac-username",
+        instance_arn=ORG_INFO.sso_instance_arn,
+        attributes=[
+            {
+                "key": "username",
+                "values": [{"sources": ["${path:userName}"]}],
+            },
+            {
+                "key": "userType",
+                "values": [{"sources": ["${path:userType}"]}],
+            },
+            {
+                "key": "organization",
+                "values": [{"sources": ["${path:enterprise.organization}"]}],
+            },
+        ],
+    )
 
     create_all_permissions(workloads_dict)
 
