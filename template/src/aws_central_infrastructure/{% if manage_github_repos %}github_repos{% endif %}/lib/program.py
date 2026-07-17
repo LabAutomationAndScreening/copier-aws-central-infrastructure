@@ -86,7 +86,7 @@ def build_org_github_resources(  # noqa: PLR0913 # this is a lot of arguments, b
 
 
 def pulumi_program() -> None:
-    """Execute creating the stack for the central lab-sync organization."""
+    """Execute creating the stack for the central company organization."""
     repo_configs: list[GithubRepoConfig] = []
     create_repo_configs(repo_configs)
     root_team = GithubTeamConfig(
