@@ -27,9 +27,7 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
-from aws_central_infrastructure.artifact_stores.internal_packages import (
-    create_internal_packages_configs,
-)
+from aws_central_infrastructure.artifact_stores.internal_packages import create_internal_packages_configs
 from aws_central_infrastructure.iac_management.lib import CENTRAL_INFRA_REPO_NAME
 
 from .constants import ALLOW_ADMIN_BYPASS_FOR_AWS_ORG_REPOS
@@ -77,18 +75,18 @@ class GithubRepoConfig(BaseModel):
     require_last_push_approval: bool = True
     dismiss_stale_reviews_on_push: bool = True
     allow_update_branch: bool = False
-    create_repo: bool = True  # set to False if the repo already exists but you just want to apply some other Pulumi to it
-    import_existing_repo_using_config: Self | None = None
-    create_pypi_publishing_environments: bool = False  # this generally gets automatically updated based on the package claims in the Artifact Stores module
-    autolink_references: list[AutoLinkConfig] = Field(
-        default_factory=list[AutoLinkConfig]
+    create_repo: bool = (
+        True  # set to False if the repo already exists but you just want to apply some other Pulumi to it
     )
+    import_existing_repo_using_config: Self | None = None
+    create_pypi_publishing_environments: bool = (
+        False  # this generally gets automatically updated based on the package claims in the Artifact Stores module
+    )
+    autolink_references: list[AutoLinkConfig] = Field(default_factory=list[AutoLinkConfig])
     topics: list[str] = Field(default_factory=list)
-    allowed_merge_methods: Sequence[Literal["merge", "squash", "rebase"]] | None = (
-        Field(
-            default=None,
-            description="When left as None, this just uses the boolean flags for allow_merge_commit etc. But it can be set to an explicit list, usually in an attempt to prevent all types of merge commits and only allow fast-forward merges ('merge' cannot be allowed as a value here in that case, typically 'rebase' is used for this field)",
-        )
+    allowed_merge_methods: Sequence[Literal["merge", "squash", "rebase"]] | None = Field(
+        default=None,
+        description="When left as None, this just uses the boolean flags for allow_merge_commit etc. But it can be set to an explicit list, usually in an attempt to prevent all types of merge commits and only allow fast-forward merges ('merge' cannot be allowed as a value here in that case, typically 'rebase' is used for this field)",
     )
     additional_protected_branches: list[str] = Field(
         default_factory=list,
@@ -169,24 +167,18 @@ class GithubRepo(ComponentResource):
                 squash_merge_commit_message=config.squash_merge_commit_message
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.squash_merge_commit_message,
-                auto_init=True
-                if config.import_existing_repo_using_config is None
-                else None,
+                auto_init=True if config.import_existing_repo_using_config is None else None,
                 vulnerability_alerts=config.vulnerability_alerts
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.vulnerability_alerts,
                 allow_update_branch=config.allow_update_branch
                 if config.import_existing_repo_using_config is None
                 else config.import_existing_repo_using_config.allow_update_branch,
-                topics=repo_topics
-                if config.import_existing_repo_using_config is None
-                else None,
+                topics=repo_topics if config.import_existing_repo_using_config is None else None,
                 opts=ResourceOptions(
                     provider=provider,
                     parent=self,
-                    import_=None
-                    if config.import_existing_repo_using_config is None
-                    else config.name,
+                    import_=None if config.import_existing_repo_using_config is None else config.name,
                 ),
             )
         if config.create_pypi_publishing_environments:
@@ -242,9 +234,7 @@ class GithubRepo(ComponentResource):
                 target="branch",
                 enforcement="active",
                 conditions=RepositoryRulesetConditionsArgs(
-                    ref_name=RepositoryRulesetConditionsRefNameArgs(
-                        includes=includes, excludes=[]
-                    )
+                    ref_name=RepositoryRulesetConditionsRefNameArgs(includes=includes, excludes=[])
                 ),
                 rules=RepositoryRulesetRulesArgs(
                     deletion=True,
@@ -266,24 +256,18 @@ class GithubRepo(ComponentResource):
                         require_code_owner_review=config.require_code_owner_review,
                     ),
                 ),
-                opts=ResourceOptions(
-                    provider=provider, parent=self, depends_on=conditional_repo_depends
-                ),
+                opts=ResourceOptions(provider=provider, parent=self, depends_on=conditional_repo_depends),
             )
 
         autolinks = global_autolinks | set(config.autolink_references)
 
         for autolink in autolinks:
             _ = RepositoryAutolinkReference(
-                append_resource_suffix(
-                    f"{config.name}-{autolink.ticket_prefix}-autolink", max_length=150
-                ),
+                append_resource_suffix(f"{config.name}-{autolink.ticket_prefix}-autolink", max_length=150),
                 repository=config.name,
                 key_prefix=autolink.ticket_prefix,
                 target_url_template=autolink.url,
-                opts=ResourceOptions(
-                    parent=self, provider=provider, depends_on=conditional_repo_depends
-                ),
+                opts=ResourceOptions(parent=self, provider=provider, depends_on=conditional_repo_depends),
             )
 
 
@@ -299,9 +283,7 @@ def create_repos(
         configs = []
     if not configs:
         return
-    resolved_autolinks = (
-        GLOBAL_AUTOLINKS if global_autolinks is None else global_autolinks
-    )
+    resolved_autolinks = GLOBAL_AUTOLINKS if global_autolinks is None else global_autolinks
     if include_aws_org_repos:
         default_imported_repo_config = (  # these are the typical default github settings, so use these when importing a repo
             GithubRepoConfig(
@@ -345,6 +327,4 @@ def create_repos(
                     config.create_pypi_publishing_environments = True
                     break
     for config in configs:
-        _ = GithubRepo(
-            config=config, global_autolinks=resolved_autolinks, provider=provider
-        )
+        _ = GithubRepo(config=config, global_autolinks=resolved_autolinks, provider=provider)
