@@ -72,6 +72,8 @@ class GithubRepoConfig(BaseModel):
     repo_write_role_rule_bypass: bool = False
     require_code_owner_review: bool = True
     required_approving_review_count: int = 1
+    require_last_push_approval: bool = True
+    dismiss_stale_reviews_on_push: bool = True
     allow_update_branch: bool = False
     create_repo: bool = (
         True  # set to False if the repo already exists but you just want to apply some other Pulumi to it
@@ -248,8 +250,8 @@ class GithubRepo(ComponentResource):
                     ),
                     pull_request=RepositoryRulesetRulesPullRequestArgs(
                         allowed_merge_methods=config.allowed_merge_methods,
-                        dismiss_stale_reviews_on_push=True,
-                        require_last_push_approval=True,
+                        dismiss_stale_reviews_on_push=config.dismiss_stale_reviews_on_push,
+                        require_last_push_approval=config.require_last_push_approval,
                         required_approving_review_count=config.required_approving_review_count,
                         require_code_owner_review=config.require_code_owner_review,
                     ),
