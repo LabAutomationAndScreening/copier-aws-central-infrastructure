@@ -40,7 +40,7 @@ class DistributorPackagesBucket(ComponentResource):
         _ = s3.BucketPolicy(
             append_resource_suffix("distributor-packages"),
             opts=ResourceOptions(parent=self, delete_before_replace=True),
-            bucket=self.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright somehow thinks a bucket name can be Output[None], which doesn't seem possible
+            bucket=self.bucket.bucket_name,
             policy_document=self.bucket.bucket_name.apply(
                 lambda bucket_name: (
                     get_policy_document(
@@ -123,7 +123,7 @@ class SsmBucketsSsmParameters(ComponentResource):
                 ),
                 type=ssm.ParameterType.STRING,
                 name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/ssm-distributor-packages-bucket-name",
-                value=distributor_packages_bucket.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright thinks somehow the bucket name could be Output[None], which doesn't seem possible
+                value=distributor_packages_bucket.bucket.bucket_name,
                 opts=ResourceOptions(
                     parent=self,
                     provider=self.providers[account.id],
@@ -138,7 +138,7 @@ class SsmBucketsSsmParameters(ComponentResource):
                 ),
                 type=ssm.ParameterType.STRING,
                 name=f"{ORG_MANAGED_PARAMS_AND_SECRETS_PREFIX}/manual-artifacts-bucket-name",
-                value=manual_artifacts_bucket.bucket.bucket_name,  # type: ignore[reportArgumentType] # pyright thinks somehow the bucket name could be Output[None], which doesn't seem possible
+                value=manual_artifacts_bucket.bucket.bucket_name,
                 opts=ResourceOptions(
                     delete_before_replace=True,
                     provider=self.providers[account.id],
