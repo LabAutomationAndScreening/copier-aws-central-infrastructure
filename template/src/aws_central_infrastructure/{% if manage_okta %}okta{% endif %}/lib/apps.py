@@ -1,7 +1,6 @@
 import base64
 import json
 from pathlib import Path
-from typing import Any
 
 import pulumi
 from ephemeral_pulumi_deploy import append_resource_suffix
