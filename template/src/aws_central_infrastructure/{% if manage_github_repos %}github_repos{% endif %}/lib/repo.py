@@ -223,12 +223,15 @@ class GithubRepo(ComponentResource):
                     actor_id=4,  # the ID for the Write Repository Role
                 )
             )
+        # supplying an empty list seems to cause problems, so explicitly pass None if no bypass
+        ruleset_bypass_actors: MutableSequence[RepositoryRulesetBypassActorArgs] | None = None
+        if len(bypass_actors) > 0:
+            ruleset_bypass_actors = bypass_actors
         conditional_repo_depends = [] if not config.create_repo else [repo]  # type: ignore[reportPossiblyUnboundVariable] # this is a false positive, due to the conditionals in this ternary and the logic above
         for resource_suffix, ruleset_name, includes in _branch_ruleset_targets(config):
             _ = RepositoryRuleset(
                 append_resource_suffix(resource_suffix, max_length=150),
-                bypass_actors=bypass_actors
-                or None,  # supplying an empty list seems to cause problems, so explicitly pass None if no bypass
+                bypass_actors=ruleset_bypass_actors,
                 name=ruleset_name,
                 repository=config.name,
                 target="branch",
@@ -281,7 +284,7 @@ def create_repos(
 ) -> None:
     if configs is None:
         configs = []
-    if not configs:
+    if len(configs) == 0:
         return
     resolved_autolinks = GLOBAL_AUTOLINKS if global_autolinks is None else global_autolinks
     if include_aws_org_repos:

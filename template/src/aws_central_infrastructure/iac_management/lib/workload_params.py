@@ -45,22 +45,22 @@ def load_workload_info(
     ssm_client = boto3.client("ssm", region_name=get_config_str("proj:aws_org_home_region"))
 
     parameters: list[ParameterMetadataTypeDef] = []
-    next_token = None
+    next_token = ""
 
     while True:
         # API call with optional pagination
         response = ssm_client.describe_parameters(
             ParameterFilters=[{"Key": "Name", "Option": "BeginsWith", "Values": [WORKLOAD_INFO_SSM_PARAM_PREFIX]}],
             MaxResults=50,  # AWS allows up to 50 results per call
-            NextToken=next_token or "",
+            NextToken=next_token,
         )
 
         # Add parameters from this page
         parameters.extend(response.get("Parameters", []))
 
         # Check if more pages exist
-        next_token = response.get("NextToken")
-        if not next_token:
+        next_token = response.get("NextToken", "")
+        if next_token == "":
             break
 
     def get_parameter_value(name: str) -> str:

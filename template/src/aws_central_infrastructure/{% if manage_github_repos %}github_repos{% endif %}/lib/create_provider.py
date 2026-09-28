@@ -43,7 +43,7 @@ def _get_token(*, org_name: str) -> str:
     if USE_REPO_SECRET_FOR_GITHUB_IAC_TOKENS:
         if TOKENS_ENV_VAR_NAME in os.environ:
             raw_json_token_info = os.environ[TOKENS_ENV_VAR_NAME]
-            if not raw_json_token_info:
+            if raw_json_token_info == "":
                 raise Exception(  # noqa: TRY003,TRY002 # not worth custom exception
                     f"The environment variable {TOKENS_ENV_VAR_NAME} is set, but it is empty. Please set it to the GitHub API token."
                 )

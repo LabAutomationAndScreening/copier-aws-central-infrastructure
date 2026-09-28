@@ -148,7 +148,9 @@ def fully_configure_teams(
     configs.insert(0, root_team)
     root_team.maintainers.extend(org_members.org_admins)
     root_team.members.extend(org_members.everyone)
-    for repo_name in root_team_push_repos or []:
+    if root_team_push_repos is None:
+        return
+    for repo_name in root_team_push_repos:
         root_team.repo_permissions[repo_name] = "push"
 
 

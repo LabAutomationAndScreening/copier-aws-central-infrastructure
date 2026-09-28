@@ -38,7 +38,9 @@ class EcrConfig(BaseModel):
 
     @property
     def ecr_repo_full_name_for_arn(self) -> str:
-        return f"{self.ecr_repo_namespace}/{self.ecr_repo_name}" if self.ecr_repo_namespace else self.ecr_repo_name
+        if self.ecr_repo_namespace is None:
+            return self.ecr_repo_name
+        return f"{self.ecr_repo_namespace}/{self.ecr_repo_name}"
 
     @property
     def ecr_repo_full_name_for_resource(self) -> str:

@@ -160,14 +160,14 @@ class ARecordConfig(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name_not_empty(cls, v: str) -> str:
-        if not v or not v.strip():
+        if v.strip() == "":
             raise ValueError("ARecordConfig 'name' cannot be empty")  # noqa: TRY003 # this is a simple validation check no need for custom exception
         return v.strip()
 
     @field_validator("records")
     @classmethod
     def validate_records_not_empty(cls, v: list[str]) -> list[str]:
-        if not v:
+        if len(v) == 0:
             raise ValueError("ARecordConfig 'records' cannot be empty")  # noqa: TRY003 # this is a simple validation check no need for custom exception
         return v
 
