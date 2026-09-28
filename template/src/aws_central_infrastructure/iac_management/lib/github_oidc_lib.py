@@ -88,7 +88,7 @@ class GithubOidcConfig(BaseModel):
     repo_name: str
     managed_policy_arns: list[str] = Field(default_factory=list)
     restrictions: str | None = None
-    role_policies: list[iam.RolePolicyArgs] = Field(default_factory=list)  # pyright: ignore[reportUnknownVariableType] # pulumi_aws_native stubs leave RolePolicyArgs partially untyped
+    role_policies: list[iam.RolePolicyArgs] = Field(default_factory=list)
     role_resource_name_prefix: str = "github-oidc--"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

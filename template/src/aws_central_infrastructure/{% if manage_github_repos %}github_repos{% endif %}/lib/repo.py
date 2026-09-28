@@ -8,6 +8,7 @@ from typing import override
 
 from ephemeral_pulumi_deploy import append_resource_suffix
 from pulumi import ComponentResource
+from pulumi import Resource
 from pulumi import ResourceOptions
 from pulumi_github import Provider
 from pulumi_github import Repository
@@ -124,6 +125,7 @@ class GithubRepo(ComponentResource):
             append_resource_suffix(config.name, max_length=150),
             None,
         )
+        conditional_repo_depends: list[Resource] = []
         if config.create_repo:
             repo_topics = ["managed-by-aws-central-infrastructure-iac-repo"]
             repo_topics += config.topics
@@ -181,6 +183,7 @@ class GithubRepo(ComponentResource):
                     import_=None if config.import_existing_repo_using_config is None else config.name,
                 ),
             )
+            conditional_repo_depends.append(repo)
         if config.create_pypi_publishing_environments:
             pypi_env = RepositoryEnvironment(
                 append_resource_suffix(f"{config.name}-pypi", max_length=150),
@@ -227,7 +230,6 @@ class GithubRepo(ComponentResource):
         ruleset_bypass_actors: MutableSequence[RepositoryRulesetBypassActorArgs] | None = None
         if len(bypass_actors) > 0:
             ruleset_bypass_actors = bypass_actors
-        conditional_repo_depends = [] if not config.create_repo else [repo]  # type: ignore[reportPossiblyUnboundVariable] # this is a false positive, due to the conditionals in this ternary and the logic above
         for resource_suffix, ruleset_name, includes in _branch_ruleset_targets(config):
             _ = RepositoryRuleset(
                 append_resource_suffix(resource_suffix, max_length=150),
