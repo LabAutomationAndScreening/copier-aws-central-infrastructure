@@ -1,5 +1,4 @@
 import inspect
-from typing import Any
 from typing import override
 
 import boto3
@@ -51,7 +50,7 @@ class ImageBuilderConfig(BaseModel):
     tear_down_builder: bool = False  # set this to true after the image is created to remove the EC2 instance but leave in place the information of how it was created
 
     @override
-    def model_post_init(self, context: Any):
+    def model_post_init(self, context: object):
         if self.new_image_config is None and self.tear_down_builder:
             raise ValueError(  # noqa: TRY003 # Pydantic standard pattern utilizes ValueError for validation
                 f"Error for builder {self.builder_resource_name}: If tear_down_builder is true, then new_image_config must be set."

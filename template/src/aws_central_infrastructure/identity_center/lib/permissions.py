@@ -1,7 +1,6 @@
 import logging
 import re
 from collections.abc import Callable
-from typing import Any
 from typing import override
 
 from ephemeral_pulumi_deploy import get_config_str
@@ -504,7 +503,7 @@ class DefaultWorkloadPermissionAssignments(BaseModel):
     users: list[UserInfo] | None = None
 
     @override
-    def model_post_init(self, _: Any) -> None:
+    def model_post_init(self, _: object) -> None:
         for protected_env_account in [
             *self.workload_info.prod_accounts,
             *self.workload_info.staging_accounts,
