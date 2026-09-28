@@ -261,7 +261,7 @@ def access_based_rule_conditions() -> list[GetPolicyDocumentStatementArgs]:
     for conditions in access_based_rules:
         # build a sid from variable and values
         sid_parts = [condition.variable.split(":")[-1] for condition in conditions]
-        sid_parts.extend([str(val) for condition in conditions for val in condition.values])
+        sid_parts.extend([val for condition in conditions for val in condition.values])
         sid_suffix = "".join(sid_parts)
         sid_suffix = re.sub(
             r"[^a-zA-Z0-9]+", "", sid_suffix
