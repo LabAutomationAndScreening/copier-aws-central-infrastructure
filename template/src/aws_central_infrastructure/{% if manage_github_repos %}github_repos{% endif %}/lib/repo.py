@@ -8,6 +8,7 @@ from typing import override
 
 from ephemeral_pulumi_deploy import append_resource_suffix
 from pulumi import ComponentResource
+from pulumi import Resource
 from pulumi import ResourceOptions
 from pulumi_github import Provider
 from pulumi_github import Repository
@@ -124,6 +125,7 @@ class GithubRepo(ComponentResource):
             append_resource_suffix(config.name, max_length=150),
             None,
         )
+        conditional_repo_depends: list[Resource] = []
         if config.create_repo:
             repo_topics = ["managed-by-aws-central-infrastructure-iac-repo"]
             repo_topics += config.topics
@@ -181,6 +183,7 @@ class GithubRepo(ComponentResource):
                     import_=None if config.import_existing_repo_using_config is None else config.name,
                 ),
             )
+            conditional_repo_depends.append(repo)
         if config.create_pypi_publishing_environments:
             pypi_env = RepositoryEnvironment(
                 append_resource_suffix(f"{config.name}-pypi", max_length=150),
@@ -223,12 +226,14 @@ class GithubRepo(ComponentResource):
                     actor_id=4,  # the ID for the Write Repository Role
                 )
             )
-        conditional_repo_depends = [] if not config.create_repo else [repo]  # type: ignore[reportPossiblyUnboundVariable] # this is a false positive, due to the conditionals in this ternary and the logic above
+        # supplying an empty list seems to cause problems, so explicitly pass None if no bypass
+        ruleset_bypass_actors: MutableSequence[RepositoryRulesetBypassActorArgs] | None = None
+        if len(bypass_actors) > 0:
+            ruleset_bypass_actors = bypass_actors
         for resource_suffix, ruleset_name, includes in _branch_ruleset_targets(config):
             _ = RepositoryRuleset(
                 append_resource_suffix(resource_suffix, max_length=150),
-                bypass_actors=bypass_actors
-                or None,  # supplying an empty list seems to cause problems, so explicitly pass None if no bypass
+                bypass_actors=ruleset_bypass_actors,
                 name=ruleset_name,
                 repository=config.name,
                 target="branch",
@@ -281,7 +286,7 @@ def create_repos(
 ) -> None:
     if configs is None:
         configs = []
-    if not configs:
+    if len(configs) == 0:
         return
     resolved_autolinks = GLOBAL_AUTOLINKS if global_autolinks is None else global_autolinks
     if include_aws_org_repos:

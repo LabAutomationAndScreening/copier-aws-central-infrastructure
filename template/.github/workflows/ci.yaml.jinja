@@ -220,21 +220,16 @@ jobs:
     if: always()
     steps:
       - name: fail if prior job failure
+        # Iterating the needs context keeps this gate from drifting out of sync with the job list above
+        env:
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          success_pattern="^(skipped|success)$" # these are the possibilities: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#needs-context
+          # these are the possibilities: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#needs-context
+          not_ok=$(jq -r 'to_entries[] | select(.value.result | test("^(skipped|success)$") | not) | .key' <<<"$NEEDS")
 
-          if [[ ! "${{ needs.get-values.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.check-skip-duplicate.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.lint.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.unit-test.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.iac-management-pulumi.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.artifact-stores-pulumi.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.central-networking-pulumi.result }}" =~ $success_pattern ]]{% endraw %}{% if initial_iac_management_deploy_occurred %}{% raw %} ||
-            [[ ! "${{ needs.identity-center-pulumi.result }}" =~ $success_pattern ]]{% endraw %}{% endif %}{% if manage_github_repos %}{% raw %} ||
-            [[ ! "${{ needs.github-repos-pulumi.result }}" =~ $success_pattern ]]{% endraw %}{% endif %}{% if manage_okta %}{% raw %} ||
-            [[ ! "${{ needs.okta-pulumi.result }}" =~ $success_pattern ]]{% endraw %}{% endif %}{% raw %} ||
-            [[ ! "${{ needs.confirm-on-tagged-copier-template.result }}" =~ $success_pattern ]]; then
-            echo "❌ One or more jobs did not finish with skipped or success"
+          if [[ -n "$not_ok" ]]; then
+            echo "❌ One or more jobs did not finish with skipped or success:"
+            echo "$not_ok"
             exit 1
           fi
           echo "✅ All jobs finished with skipped or success"

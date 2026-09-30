@@ -195,7 +195,11 @@ def _patterns_overlap(a: str, b: str) -> bool:
     def to_regex(p: str) -> re.Pattern[str]:
         return re.compile(re.escape(p).replace(r"\*", ".*"), re.IGNORECASE)
 
-    return bool(to_regex(a).fullmatch(b) or to_regex(b).fullmatch(a))
+    if to_regex(a).fullmatch(b) is not None:
+        return True
+    if to_regex(b).fullmatch(a) is not None:
+        return True
+    return False
 
 
 def validate_no_cross_workload_pattern_overlap(

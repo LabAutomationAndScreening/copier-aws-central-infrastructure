@@ -1,7 +1,6 @@
 import base64
 import json
 from pathlib import Path
-from typing import Any
 
 import pulumi
 from ephemeral_pulumi_deploy import append_resource_suffix
@@ -27,10 +26,12 @@ class SamlAppConfig(BaseModel):
     @property
     def saml_attribute_statements(self) -> list[SamlAttributeStatementArgs]:
         for attribute in self.custom_saml_attributes:
-            if attribute.filter_type or attribute.filter_value:  # pyrefly: ignore[not-callable]  # TODO: investigate why pyrefly treats these Pulumi Input fields as non-callable Output[Any] in a boolean check
-                assert attribute.type == "GROUP", (
-                    f"Only attributes of type 'GROUP' can have filter_type or filter_value. Error in attribute {attribute.name}"
-                )
+            if attribute.filter_type is None:
+                if attribute.filter_value is None:
+                    continue
+            assert attribute.type == "GROUP", (
+                f"Only attributes of type 'GROUP' can have filter_type or filter_value. Error in attribute {attribute.name}"
+            )
         return list(self.custom_saml_attributes)
 
 
@@ -108,27 +109,32 @@ def create_apps(
     for app_config in app_configs:
         resource_safe_name = app_config.name.lower().replace(" ", "-")
         if isinstance(app_config, PreConfiguredSamlAppConfig):
-            app_settings_dict: dict[str, Any] = {}
+            app_settings_json: str | None = None
             if isinstance(app_config, AwsIdentityCenterAppConfig):
-                app_settings_dict = {
-                    "acsURL": app_config.acs_url,
-                    "entityID": app_config.issuer_url,
-                }
+                app_settings_json = json.dumps(
+                    {
+                        "acsURL": app_config.acs_url,
+                        "entityID": app_config.issuer_url,
+                    }
+                )
             app = Saml(
                 append_resource_suffix(resource_safe_name),
                 label=app_config.label,
                 preconfigured_app=app_config.preconfigured_app,
-                app_settings_json=json.dumps(app_settings_dict) if app_settings_dict else None,
+                app_settings_json=app_settings_json,
                 attribute_statements=app_config.saml_attribute_statements,
                 opts=ResourceOptions(
                     provider=provider,
                 ),
             )
         elif isinstance(app_config, (ClaudeCodeAppConfig, FyleAppConfig)):
+            logo: str | None = None
+            if app_config.logo is not None:
+                logo = str(app_config.logo)
             app = Saml(
                 append_resource_suffix(resource_safe_name),
                 label=app_config.label,
-                logo=str(app_config.logo) if app_config.logo else None,
+                logo=logo,
                 sso_url=app_config.acs_url,
                 recipient=app_config.acs_url,
                 destination=app_config.acs_url,

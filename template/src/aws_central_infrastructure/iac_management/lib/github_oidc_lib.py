@@ -75,6 +75,12 @@ class CommonOidcConfigKwargs(TypedDict):
     role_policies: list[iam.RolePolicyArgs]
 
 
+def _none_if_empty[T](items: list[T]) -> list[T] | None:
+    if len(items) == 0:
+        return None
+    return items
+
+
 class GithubOidcConfig(BaseModel):
     aws_account_id: str
     role_name: str
@@ -82,7 +88,7 @@ class GithubOidcConfig(BaseModel):
     repo_name: str
     managed_policy_arns: list[str] = Field(default_factory=list)
     restrictions: str | None = None
-    role_policies: list[iam.RolePolicyArgs] = Field(default_factory=list)  # pyright: ignore[reportUnknownVariableType] # pulumi_aws_native stubs leave RolePolicyArgs partially untyped
+    role_policies: list[iam.RolePolicyArgs] = Field(default_factory=list)
     role_resource_name_prefix: str = "github-oidc--"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -94,8 +100,8 @@ class GithubOidcConfig(BaseModel):
             assume_role_policy_document=create_oidc_assume_role_policy(
                 oidc_config=self, provider_arn=provider_arn
             ).json,
-            managed_policy_arns=self.managed_policy_arns or None,
-            policies=self.role_policies or None,
+            managed_policy_arns=_none_if_empty(self.managed_policy_arns),
+            policies=_none_if_empty(self.role_policies),
             tags=common_tags_native(),
             opts=ResourceOptions(parent=parent),
         )
@@ -372,7 +378,7 @@ class WorkloadGithubOidc(ComponentResource):
                 role_name=oidc_config.role_name,
                 assume_role_policy_document=assume_role_policy_doc.json,
                 managed_policy_arns=oidc_config.managed_policy_arns,
-                policies=oidc_config.role_policies or None,
+                policies=_none_if_empty(oidc_config.role_policies),
                 tags=common_tags_native(),
                 opts=ResourceOptions(provider=pulumi_provider, parent=self),
             )
