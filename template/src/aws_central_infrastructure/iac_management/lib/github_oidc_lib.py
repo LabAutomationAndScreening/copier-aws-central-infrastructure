@@ -1,4 +1,6 @@
+from typing import Self
 from typing import TypedDict
+from typing import TypeGuard
 
 from ephemeral_pulumi_deploy import get_config_str
 from ephemeral_pulumi_deploy.utils import common_tags_native
@@ -21,6 +23,7 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import field_validator
+from pydantic import model_validator
 
 from .constants import GITHUB_ORG_IDS
 
@@ -86,6 +89,14 @@ def _none_if_empty[T](items: list[T]) -> list[T] | None:
     return items
 
 
+def _is_specific_restriction(restriction: str | None) -> TypeGuard[str]:
+    if restriction is None:
+        return False
+    if restriction == ANY_SUBJECT_CONTEXT:
+        return False
+    return True
+
+
 class GithubOidcConfig(BaseModel):
     aws_account_id: str
     role_name: str
@@ -110,14 +121,23 @@ class GithubOidcConfig(BaseModel):
     @field_validator("restrictions")
     @classmethod
     def _allow_only_bare_wildcard(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        if value == ANY_SUBJECT_CONTEXT:
+        if not _is_specific_restriction(value):
             return value
         for wildcard_char in IAM_STRING_LIKE_WILDCARD_CHARS:
             if wildcard_char in value:
                 raise ValueError(f"OIDC restriction {value!r} must not contain wildcard characters")  # noqa: TRY003 # pydantic validators must raise ValueError for it to be converted into a ValidationError
         return value
+
+    @model_validator(mode="after")
+    def _reject_wildcard_repo_name_when_restricted(self) -> Self:
+        if not _is_specific_restriction(self.restrictions):
+            return self
+        for wildcard_char in IAM_STRING_LIKE_WILDCARD_CHARS:
+            if wildcard_char in self.repo_name:
+                raise ValueError(  # noqa: TRY003 # pydantic validators must raise ValueError for it to be converted into a ValidationError
+                    f"OIDC repo name {self.repo_name!r} must not contain wildcard characters when restricted to {self.restrictions!r}"
+                )
+        return self
 
     def create_role(self, *, provider_arn: str, parent: Resource | None = None) -> iam.Role:
         return iam.Role(

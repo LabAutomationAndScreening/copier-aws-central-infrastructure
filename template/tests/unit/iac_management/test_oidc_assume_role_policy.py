@@ -127,6 +127,43 @@ class TestWhenGithubOidcConfigCreated:
 
         assert oidc_config.restrictions is None
 
+    @pytest.mark.parametrize("wildcard_char", ["*", "?"])
+    def test_Given_wildcard_repo_name_with_ref_restriction__Then_validation_error_names_repo_and_restriction(
+        self, wildcard_char: str
+    ) -> None:
+        repo_name = f"{_random_name()}{wildcard_char}"
+        restriction = f"ref:refs/heads/{_random_name()}"
+
+        with pytest.raises(pydantic.ValidationError, match=f"{re.escape(repo_name)}.*{re.escape(restriction)}"):
+            _ = GithubOidcConfig(
+                aws_account_id=_random_account_id(),
+                role_name=_random_name(),
+                repo_org=CENTRAL_INFRA_GITHUB_ORG_NAME,
+                repo_name=repo_name,
+                restrictions=restriction,
+            )
+
+    def test_Given_wildcard_repo_name_without_restriction__Then_config_keeps_it(self) -> None:
+        oidc_config = GithubOidcConfig(
+            aws_account_id=_random_account_id(),
+            role_name=_random_name(),
+            repo_org=CENTRAL_INFRA_GITHUB_ORG_NAME,
+            repo_name="*",
+        )
+
+        assert oidc_config.repo_name == "*"
+
+    def test_Given_wildcard_repo_name_with_bare_wildcard_restriction__Then_config_keeps_it(self) -> None:
+        oidc_config = GithubOidcConfig(
+            aws_account_id=_random_account_id(),
+            role_name=_random_name(),
+            repo_org=CENTRAL_INFRA_GITHUB_ORG_NAME,
+            repo_name="*",
+            restrictions=ANY_SUBJECT_CONTEXT,
+        )
+
+        assert oidc_config.repo_name == "*"
+
     def test_Given_repo_org_without_known_org_id__Then_validation_error_names_org(self) -> None:
         unknown_org_name = _random_name()
 
