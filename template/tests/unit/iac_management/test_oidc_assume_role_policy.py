@@ -1,8 +1,11 @@
 import random
+import re
 import string
 from unittest.mock import ANY
 from unittest.mock import MagicMock
 
+import pydantic
+import pytest
 from pulumi_aws.iam import GetPolicyDocumentStatementConditionArgs
 from pulumi_aws.iam import get_policy_document
 from pytest_mock import MockerFixture
@@ -10,6 +13,7 @@ from pytest_mock import MockerFixture
 import aws_central_infrastructure.iac_management.lib.github_oidc_lib as github_oidc_lib_module
 from aws_central_infrastructure.iac_management.lib.constants import CENTRAL_INFRA_GITHUB_ORG_NAME
 from aws_central_infrastructure.iac_management.lib.constants import GITHUB_ORG_IDS
+from aws_central_infrastructure.iac_management.lib.github_oidc_lib import ANY_SUBJECT_CONTEXT
 from aws_central_infrastructure.iac_management.lib.github_oidc_lib import GithubOidcConfig
 from aws_central_infrastructure.iac_management.lib.github_oidc_lib import create_oidc_assume_role_policy
 
@@ -83,3 +87,42 @@ class TestCreateOidcAssumeRolePolicy:
             f"repo:{CENTRAL_INFRA_GITHUB_ORG_NAME}/{repo_name}:{restriction}",
             f"repo:{CENTRAL_ORG_IMMUTABLE_PREFIX}/{repo_name}@*:{restriction}",
         ]
+
+
+class TestWhenGithubOidcConfigCreated:
+    @pytest.mark.parametrize("wildcard_char", ["*", "?"])
+    def test_Given_restriction_containing_wildcard__Then_validation_error_names_restriction(
+        self, wildcard_char: str
+    ) -> None:
+        restriction = f"ref:refs/heads/{_random_name()}{wildcard_char}"
+
+        with pytest.raises(pydantic.ValidationError, match=re.escape(restriction)):
+            _ = GithubOidcConfig(
+                aws_account_id=_random_account_id(),
+                role_name=_random_name(),
+                repo_org=CENTRAL_INFRA_GITHUB_ORG_NAME,
+                repo_name=_random_name(),
+                restrictions=restriction,
+            )
+
+    def test_Given_bare_wildcard_restriction__Then_config_keeps_it(self) -> None:
+        oidc_config = GithubOidcConfig(
+            aws_account_id=_random_account_id(),
+            role_name=_random_name(),
+            repo_org=CENTRAL_INFRA_GITHUB_ORG_NAME,
+            repo_name=_random_name(),
+            restrictions=ANY_SUBJECT_CONTEXT,
+        )
+
+        assert oidc_config.restrictions == ANY_SUBJECT_CONTEXT
+
+    def test_Given_restrictions_explicitly_none__Then_config_has_no_restrictions(self) -> None:
+        oidc_config = GithubOidcConfig(
+            aws_account_id=_random_account_id(),
+            role_name=_random_name(),
+            repo_org=CENTRAL_INFRA_GITHUB_ORG_NAME,
+            repo_name=_random_name(),
+            restrictions=None,
+        )
+
+        assert oidc_config.restrictions is None

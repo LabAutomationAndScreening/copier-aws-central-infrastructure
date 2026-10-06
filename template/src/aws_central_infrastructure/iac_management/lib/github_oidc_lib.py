@@ -20,10 +20,13 @@ from pulumi_aws_native import iam
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
+from pydantic import field_validator
 
 from .constants import GITHUB_ORG_IDS
 
 GITHUB_OIDC_URL = "https://token.actions.githubusercontent.com"
+IAM_STRING_LIKE_WILDCARD_CHARS = "*?"
+ANY_SUBJECT_CONTEXT = "*"
 CODE_ARTIFACT_SERVICE_BEARER_STATEMENT = GetPolicyDocumentStatementArgs(
     sid="GetCodeArtifactAuthToken",
     effect="Allow",
@@ -95,6 +98,18 @@ class GithubOidcConfig(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    @field_validator("restrictions")
+    @classmethod
+    def _reject_wildcards_in_restrictions(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value == ANY_SUBJECT_CONTEXT:
+            return value
+        for wildcard_char in IAM_STRING_LIKE_WILDCARD_CHARS:
+            if wildcard_char in value:
+                raise ValueError(f"OIDC restriction {value!r} must not contain wildcard characters")  # noqa: TRY003 # pydantic validators must raise ValueError for it to be converted into a ValidationError
+        return value
+
     def create_role(self, *, provider_arn: str, parent: Resource | None = None) -> iam.Role:
         return iam.Role(
             f"{self.role_resource_name_prefix}{self.role_name}",
@@ -113,7 +128,7 @@ def create_oidc_assume_role_policy(
     *, oidc_config: GithubOidcConfig, provider_arn: str
 ) -> AwaitableGetPolicyDocumentResult:
     if oidc_config.restrictions is None:
-        subject_context = "*"
+        subject_context = ANY_SUBJECT_CONTEXT
     else:
         subject_context = oidc_config.restrictions
     # TODO: remove the legacy subject format once use_immutable_subject is enabled for every repo in every org in GITHUB_ORG_IDS. GitHub has announced no retirement date; existing repos keep the legacy format until opted in. Check that nothing else still trusts only the legacy format before opting in.
