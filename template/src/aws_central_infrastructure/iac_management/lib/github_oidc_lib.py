@@ -21,6 +21,8 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
+from .constants import GITHUB_ORG_IDS
+
 GITHUB_OIDC_URL = "https://token.actions.githubusercontent.com"
 CODE_ARTIFACT_SERVICE_BEARER_STATEMENT = GetPolicyDocumentStatementArgs(
     sid="GetCodeArtifactAuthToken",
@@ -110,6 +112,17 @@ class GithubOidcConfig(BaseModel):
 def create_oidc_assume_role_policy(
     *, oidc_config: GithubOidcConfig, provider_arn: str
 ) -> AwaitableGetPolicyDocumentResult:
+    if oidc_config.restrictions is None:
+        subject_context = "*"
+    else:
+        subject_context = oidc_config.restrictions
+    # TODO: remove the legacy subject format once use_immutable_subject is enabled for every repo in every org in GITHUB_ORG_IDS. GitHub has announced no retirement date; existing repos keep the legacy format until opted in. Check that nothing else still trusts only the legacy format before opting in.
+    legacy_subject = f"repo:{oidc_config.repo_org}/{oidc_config.repo_name}:{subject_context}"
+    # Immutable subject format, the default for repos created after 2026-07-15: https://github.blog/changelog/2026-04-23-immutable-subject-claims-for-github-actions-oidc-tokens/
+    # TODO: pin the exact repo ID instead of the `@*` wildcard, sourced from the github-repos stack outputs (requires iac-management to run after github-repos) or a GitHub API lookup.
+    # The wildcard is acceptable for now: the org ID is pinned, so a renamed or squatted org cannot match; the literal `@` after the repo name stops similarly prefixed repo names from matching;
+    # the remaining exposure is a repo in this org being deleted and recreated under the same name, which requires an org admin, who can already edit these roles; and the legacy format kept alongside is weaker anyway.
+    immutable_subject = f"repo:{oidc_config.repo_org}@{GITHUB_ORG_IDS[oidc_config.repo_org]}/{oidc_config.repo_name}@*:{subject_context}"
     return get_policy_document(
         statements=[
             GetPolicyDocumentStatementArgs(
@@ -122,9 +135,7 @@ def create_oidc_assume_role_policy(
                         if oidc_config.restrictions is None or oidc_config.restrictions == "*"
                         else "StringEquals",
                         variable="token.actions.githubusercontent.com:sub",
-                        values=[
-                            f"repo:{oidc_config.repo_org}/{oidc_config.repo_name}:{'*' if oidc_config.restrictions is None else oidc_config.restrictions}"
-                        ],
+                        values=[legacy_subject, immutable_subject],
                     ),
                     GetPolicyDocumentStatementConditionArgs(
                         test="StringEquals",

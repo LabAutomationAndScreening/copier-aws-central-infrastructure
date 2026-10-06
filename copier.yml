@@ -127,6 +127,11 @@ central_infra_github_organization_name:
     type: str
     help: What is the name of the GitHub organization that owns the central infrastructure repository?
 
+central_infra_github_organization_id:
+    type: int
+    help: What is the numeric ID of that GitHub organization? Open https://api.github.com/orgs/<org-name> in a browser (no login needed) and read the "id" field, or run `gh api orgs/<org-name> --jq .id`.
+    validator: "{% if central_infra_github_organization_id <= 0 %}Must be a positive integer{% endif %}"
+
 initial_iac_management_deploy_occurred:
     type: bool
     help: Has the initial merge to main and the deployment of the IaC Management stack occurred yet?
