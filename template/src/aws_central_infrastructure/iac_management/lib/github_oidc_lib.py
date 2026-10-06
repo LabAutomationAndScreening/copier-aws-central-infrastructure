@@ -131,9 +131,7 @@ def create_oidc_assume_role_policy(
                 actions=["sts:AssumeRoleWithWebIdentity"],
                 conditions=[
                     GetPolicyDocumentStatementConditionArgs(
-                        test="StringLike"
-                        if oidc_config.restrictions is None or oidc_config.restrictions == "*"
-                        else "StringEquals",
+                        test="StringLike",
                         variable="token.actions.githubusercontent.com:sub",
                         values=[legacy_subject, immutable_subject],
                     ),
