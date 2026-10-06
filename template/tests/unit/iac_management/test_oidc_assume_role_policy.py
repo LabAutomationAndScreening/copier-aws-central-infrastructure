@@ -126,3 +126,14 @@ class TestWhenGithubOidcConfigCreated:
         )
 
         assert oidc_config.restrictions is None
+
+    def test_Given_repo_org_without_known_org_id__Then_validation_error_names_org(self) -> None:
+        unknown_org_name = _random_name()
+
+        with pytest.raises(pydantic.ValidationError, match=re.escape(unknown_org_name)):
+            _ = GithubOidcConfig(
+                aws_account_id=_random_account_id(),
+                role_name=_random_name(),
+                repo_org=unknown_org_name,
+                repo_name=_random_name(),
+            )

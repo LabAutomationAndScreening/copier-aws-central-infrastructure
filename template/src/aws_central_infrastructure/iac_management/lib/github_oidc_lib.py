@@ -98,9 +98,18 @@ class GithubOidcConfig(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    @field_validator("repo_org")
+    @classmethod
+    def _require_known_org_id(cls, value: str) -> str:
+        if value not in GITHUB_ORG_IDS:
+            raise ValueError(  # noqa: TRY003 # pydantic validators must raise ValueError for it to be converted into a ValidationError
+                f'GitHub org {value!r} has no entry in GITHUB_ORG_IDS; add it (find the ID in the "id" field at https://api.github.com/orgs/{value} or with `gh api orgs/{value} --jq .id`)'
+            )
+        return value
+
     @field_validator("restrictions")
     @classmethod
-    def _reject_wildcards_in_restrictions(cls, value: str | None) -> str | None:
+    def _allow_only_bare_wildcard(cls, value: str | None) -> str | None:
         if value is None:
             return value
         if value == ANY_SUBJECT_CONTEXT:
