@@ -1,4 +1,6 @@
+from typing import Self
 from typing import TypedDict
+from typing import TypeGuard
 
 from ephemeral_pulumi_deploy import get_config_str
 from ephemeral_pulumi_deploy.utils import common_tags_native
@@ -20,8 +22,14 @@ from pulumi_aws_native import iam
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
+from pydantic import field_validator
+from pydantic import model_validator
+
+from .constants import GITHUB_ORG_IDS
 
 GITHUB_OIDC_URL = "https://token.actions.githubusercontent.com"
+IAM_STRING_LIKE_WILDCARD_CHARS = "*?"
+ANY_SUBJECT_CONTEXT = "*"
 CODE_ARTIFACT_SERVICE_BEARER_STATEMENT = GetPolicyDocumentStatementArgs(
     sid="GetCodeArtifactAuthToken",
     effect="Allow",
@@ -81,6 +89,14 @@ def _none_if_empty[T](items: list[T]) -> list[T] | None:
     return items
 
 
+def _is_specific_restriction(restriction: str | None) -> TypeGuard[str]:
+    if restriction is None:
+        return False
+    if restriction == ANY_SUBJECT_CONTEXT:
+        return False
+    return True
+
+
 class GithubOidcConfig(BaseModel):
     aws_account_id: str
     role_name: str
@@ -92,6 +108,36 @@ class GithubOidcConfig(BaseModel):
     role_resource_name_prefix: str = "github-oidc--"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @field_validator("repo_org")
+    @classmethod
+    def _require_known_org_id(cls, value: str) -> str:
+        if value not in GITHUB_ORG_IDS:
+            raise ValueError(  # noqa: TRY003 # pydantic validators must raise ValueError for it to be converted into a ValidationError
+                f'GitHub org {value!r} has no entry in GITHUB_ORG_IDS; add it (find the ID in the "id" field at https://api.github.com/orgs/{value} or with `gh api orgs/{value} --jq .id`)'
+            )
+        return value
+
+    @field_validator("restrictions")
+    @classmethod
+    def _allow_only_bare_wildcard(cls, value: str | None) -> str | None:
+        if not _is_specific_restriction(value):
+            return value
+        for wildcard_char in IAM_STRING_LIKE_WILDCARD_CHARS:
+            if wildcard_char in value:
+                raise ValueError(f"OIDC restriction {value!r} must not contain wildcard characters")  # noqa: TRY003 # pydantic validators must raise ValueError for it to be converted into a ValidationError
+        return value
+
+    @model_validator(mode="after")
+    def _reject_wildcard_repo_name_when_restricted(self) -> Self:
+        if not _is_specific_restriction(self.restrictions):
+            return self
+        for wildcard_char in IAM_STRING_LIKE_WILDCARD_CHARS:
+            if wildcard_char in self.repo_name:
+                raise ValueError(  # noqa: TRY003 # pydantic validators must raise ValueError for it to be converted into a ValidationError
+                    f"OIDC repo name {self.repo_name!r} must not contain wildcard characters when restricted to {self.restrictions!r}"
+                )
+        return self
 
     def create_role(self, *, provider_arn: str, parent: Resource | None = None) -> iam.Role:
         return iam.Role(
@@ -110,6 +156,17 @@ class GithubOidcConfig(BaseModel):
 def create_oidc_assume_role_policy(
     *, oidc_config: GithubOidcConfig, provider_arn: str
 ) -> AwaitableGetPolicyDocumentResult:
+    if oidc_config.restrictions is None:
+        subject_context = ANY_SUBJECT_CONTEXT
+    else:
+        subject_context = oidc_config.restrictions
+    # TODO: remove the legacy subject format once use_immutable_subject is enabled for every repo in every org in GITHUB_ORG_IDS. GitHub has announced no retirement date; existing repos keep the legacy format until opted in. Check that nothing else still trusts only the legacy format before opting in.
+    legacy_subject = f"repo:{oidc_config.repo_org}/{oidc_config.repo_name}:{subject_context}"
+    # Immutable subject format, the default for repos created after 2026-07-15: https://github.blog/changelog/2026-04-23-immutable-subject-claims-for-github-actions-oidc-tokens/
+    # TODO: pin the exact repo ID instead of the `@*` wildcard, sourced from the github-repos stack outputs (requires iac-management to run after github-repos) or a GitHub API lookup.
+    # The wildcard is acceptable for now: the org ID is pinned, so a renamed or squatted org cannot match; the literal `@` after the repo name stops similarly prefixed repo names from matching;
+    # the remaining exposure is a repo in this org being deleted and recreated under the same name, which requires an org admin, who can already edit these roles; and the legacy format kept alongside is weaker anyway.
+    immutable_subject = f"repo:{oidc_config.repo_org}@{GITHUB_ORG_IDS[oidc_config.repo_org]}/{oidc_config.repo_name}@*:{subject_context}"
     return get_policy_document(
         statements=[
             GetPolicyDocumentStatementArgs(
@@ -118,13 +175,9 @@ def create_oidc_assume_role_policy(
                 actions=["sts:AssumeRoleWithWebIdentity"],
                 conditions=[
                     GetPolicyDocumentStatementConditionArgs(
-                        test="StringLike"
-                        if oidc_config.restrictions is None or oidc_config.restrictions == "*"
-                        else "StringEquals",
+                        test="StringLike",
                         variable="token.actions.githubusercontent.com:sub",
-                        values=[
-                            f"repo:{oidc_config.repo_org}/{oidc_config.repo_name}:{'*' if oidc_config.restrictions is None else oidc_config.restrictions}"
-                        ],
+                        values=[legacy_subject, immutable_subject],
                     ),
                     GetPolicyDocumentStatementConditionArgs(
                         test="StringEquals",

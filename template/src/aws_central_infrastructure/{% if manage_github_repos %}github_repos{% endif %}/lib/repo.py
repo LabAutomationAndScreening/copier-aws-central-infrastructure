@@ -130,6 +130,7 @@ class GithubRepo(ComponentResource):
             repo_topics = ["managed-by-aws-central-infrastructure-iac-repo"]
             repo_topics += config.topics
 
+            # TODO: enable GitHub's immutable OIDC subject claims for every repo (ActionsRepositoryOidcSubjectClaimCustomizationTemplate with use_immutable_subject) once the provider supports it: https://github.com/integrations/terraform-provider-github/pull/3582 . That unblocks removing the legacy subject format from the trust policy in create_oidc_assume_role_policy.
             repo = Repository(
                 append_resource_suffix(config.name, max_length=150),
                 name=config.name,
