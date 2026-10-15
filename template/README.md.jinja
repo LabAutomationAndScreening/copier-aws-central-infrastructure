@@ -61,7 +61,7 @@ https://github.com/organizations/{% endraw %}{{ repo_org_name }}{% raw %}/settin
 
 You'll need to create a Personal Access Token (PAT) to allow Pulumi to manage the GitHub Organization.
 
-Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write.  Organization: Members Read&Write{% endraw %}{% if use_repo_secret_for_github_iac_tokens %}{% raw %}
+Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write.  Organization: Members Read&Write, Custom organization roles: Read & write (only needed if org_role_assignments are configured){% endraw %}{% if use_repo_secret_for_github_iac_tokens %}{% raw %}
 In the repository settings, create both a Repository Secret and a Dependabot Secret with the name `IAC_GITHUB_API_TOKENS`. The value of the secret should be formatted like this: `{"org_tokens": {"MyGithubOrganizationName": {"deploy_token": "my-deploy-token"}}}`{% endraw %}{% else %}{% raw %}
 After the initial deployment which creates the secret, go in and use the Manual Secrets permission set to update the secret with the real token, then you can create repos{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
 

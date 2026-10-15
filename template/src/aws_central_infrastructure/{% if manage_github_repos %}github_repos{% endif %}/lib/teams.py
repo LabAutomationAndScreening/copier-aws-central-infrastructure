@@ -3,22 +3,32 @@ from typing import Self
 
 from ephemeral_pulumi_deploy import append_resource_suffix
 from pulumi import ComponentResource
+from pulumi import InvokeOptions
 from pulumi import ResourceOptions
+from pulumi_github import OrganizationRoleUser
 from pulumi_github import Provider
 from pulumi_github import Team
 from pulumi_github import TeamMembers
 from pulumi_github import TeamMembersMemberArgs
 from pulumi_github import TeamRepository
+from pulumi_github import get_organization_roles
 from pydantic import BaseModel
 from pydantic import Field
 
 type RepositoryName = str
 type GithubRepositoryPermission = Literal["pull", "triage", "push", "maintain", "admin"]
+type OrganizationRoleName = str
+
+# Predefined organization role, available on every GitHub plan, granting triage on every repo in the org, including future ones.
+ALL_REPOSITORY_TRIAGE_ROLE = "all_repo_triage"
 
 
 class GithubOrgMembers(BaseModel):
     org_admins: list[str] = Field(default_factory=list)
     everyone: list[str] = Field(default_factory=list)
+    org_role_assignments: dict[OrganizationRoleName, list[str]] = Field(
+        default_factory=dict[OrganizationRoleName, list[str]]
+    )
 
 
 def ensure_full_repo_name(repo_name: str, *, org_name: str) -> str:
@@ -118,12 +128,40 @@ class GithubTeamMemberNotInOrgMembersError(Exception):
         )
 
 
+class GithubOrgRoleUserNotInOrgMembersError(Exception):
+    def __init__(self, *, username: str, role_name: str):
+        super().__init__(
+            f"User '{username}' assigned the organization role '{role_name}' is not listed in org_members.everyone or org_members.org_admins. Organization roles can only be granted to members of the organization."
+        )
+
+
+class GithubOrganizationRoleNotFoundError(Exception):
+    def __init__(self, *, role_name: str, available_role_names: list[str]):
+        super().__init__(
+            f"Organization role '{role_name}' was not found in this GitHub organization. Available roles: {available_role_names}"
+        )
+
+
 def _validate_team_members_in_org(configs: list[GithubTeamConfig], org_members: GithubOrgMembers) -> None:
     all_org_usernames = set(org_members.org_admins) | set(org_members.everyone)
     for config in configs:
         for member in config.members + config.maintainers:
             if member not in all_org_usernames:
                 raise GithubTeamMemberNotInOrgMembersError(username=member, team_name=config.name)
+
+
+def _role_id_for(*, role_name: str, role_ids: dict[OrganizationRoleName, int]) -> int:
+    if role_name not in role_ids:
+        raise GithubOrganizationRoleNotFoundError(role_name=role_name, available_role_names=sorted(role_ids.keys()))
+    return role_ids[role_name]
+
+
+def _validate_org_role_users_in_org(org_members: GithubOrgMembers) -> None:
+    all_org_usernames = set(org_members.org_admins) | set(org_members.everyone)
+    for role_name, usernames in org_members.org_role_assignments.items():
+        for username in usernames:
+            if username not in all_org_usernames:
+                raise GithubOrgRoleUserNotInOrgMembersError(username=username, role_name=role_name)
 
 
 def fully_configure_teams(
@@ -134,6 +172,7 @@ def fully_configure_teams(
     root_team_push_repos: list[str] | None = None,
 ) -> None:
     _validate_team_members_in_org(configs, org_members)
+    _validate_org_role_users_in_org(org_members)
 
     for config in configs:
         admins_to_convert: list[str] = []
@@ -177,3 +216,26 @@ def create_teams(  # noqa: PLR0913 # this is a lot of arguments, but they're all
         if config.parent_team is None and config is not root_team:
             config.parent_team = root_team
         _ = GithubTeam(config=config, org_name=org_name, provider=provider)
+
+
+def create_org_role_assignments(*, org_members: GithubOrgMembers, provider: Provider) -> None:
+    """Grant organization-wide roles to individual members.
+
+    The numeric role IDs differ between organizations, so they are looked up by name at deploy time rather
+    than hardcoded. This requires the Custom organization roles permission: read on the preview token, and read &
+    write on the deploy token in order to assign them. It is distinct from the Members permission.
+    Pre-defined roles such as all_repo_triage exist on every GitHub plan, custom roles need Enterprise Cloud.
+    """
+    if len(org_members.org_role_assignments) == 0:
+        return
+    available_roles = get_organization_roles(opts=InvokeOptions(provider=provider))
+    role_ids = {role.name: role.role_id for role in available_roles.roles}
+    for role_name, usernames in org_members.org_role_assignments.items():
+        role_id = _role_id_for(role_name=role_name, role_ids=role_ids)
+        for username in usernames:
+            _ = OrganizationRoleUser(
+                append_resource_suffix(f"{role_name.replace(' ', '-').lower()}-{username}", max_length=200),
+                login=username,
+                role_id=role_id,
+                opts=ResourceOptions(provider=provider),
+            )
