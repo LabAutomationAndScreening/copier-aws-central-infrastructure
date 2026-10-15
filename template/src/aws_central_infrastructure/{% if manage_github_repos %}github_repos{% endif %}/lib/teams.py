@@ -224,6 +224,7 @@ def create_org_role_assignments(*, org_members: GithubOrgMembers, provider: Prov
     The numeric role IDs differ between organizations, so they are looked up by name at deploy time rather
     than hardcoded. This requires the Custom organization roles permission: read on the preview token, and read &
     write on the deploy token in order to assign them. It is distinct from the Members permission.
+    Pre-defined roles such as all_repo_triage exist on every GitHub plan, custom roles need Enterprise Cloud.
     """
     if len(org_members.org_role_assignments) == 0:
         return
