@@ -4,6 +4,9 @@ from .repo import GLOBAL_AUTOLINKS
 from .repo import AutoLinkConfig
 from .repo import GithubRepo
 from .repo import GithubRepoConfig
+from .repo import MergeQueueConfig
+from .repo import MergeQueueMergeMethodAmbiguousError
+from .repo import ReviewExemptTeamNotFoundError
 from .repo import create_repos
 from .teams import ALL_REPOSITORY_TRIAGE_ROLE
 from .teams import GithubOrgAdminAsTeamMemberError
