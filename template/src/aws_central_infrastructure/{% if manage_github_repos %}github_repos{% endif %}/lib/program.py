@@ -26,6 +26,7 @@ from .repo import GithubRepoConfig
 from .repo import create_repos
 from .teams import GithubOrgMembers
 from .teams import GithubTeamConfig
+from .teams import create_org_role_assignments
 from .teams import create_teams
 
 logger = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ def build_org_github_resources(  # noqa: PLR0913 # this is a lot of arguments, b
     tokens_created: bool,
 ) -> None:
     if not USE_REPO_SECRET_FOR_GITHUB_IAC_TOKENS:
-        # Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write.  Organization: Members Read&Write
+        # Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write.  Organization: Members Read&Write, Custom organization roles: Read & write (only needed if org_role_assignments are configured)
         # After the initial deployment which creates the secret, go in and use the Manual Secrets permission set to update the secret with the real token, then you can create repos
         _ = secretsmanager.Secret(
             append_resource_suffix("github-deploy-access-token"),
@@ -82,6 +83,7 @@ def build_org_github_resources(  # noqa: PLR0913 # this is a lot of arguments, b
         org_name=org_name,
         root_team_push_repos=root_team_push_repos,
     )
+    create_org_role_assignments(org_members=org_members, provider=provider)
     create_repository_collaborators(configs=collaborator_configs, provider=provider)
 
 
