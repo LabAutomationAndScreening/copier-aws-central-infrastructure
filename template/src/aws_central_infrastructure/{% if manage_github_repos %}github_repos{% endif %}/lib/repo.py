@@ -140,25 +140,34 @@ def _validate_review_exempt_teams(*, configs: Sequence[GithubRepoConfig], team_s
                 )
 
 
-class MergeQueueMergeMethodAmbiguousError(Exception):
+class MergeQueueMergeMethodError(Exception):
     def __init__(self, *, repo_name: str, candidates: Sequence[MergeMethod]):
         super().__init__(
-            f"Repository '{repo_name}' enables a merge queue, which needs exactly one merge method, but the repository config allows {list(candidates)}. Narrow allowed_merge_methods or the allow_*_merge flags down to one."
+            f"Repository '{repo_name}' enables a merge queue, which needs exactly one merge method that is both enabled on the repository and allowed by the ruleset, but the config resolves to {list(candidates)}. Adjust allowed_merge_methods or the allow_*_merge flags."
         )
 
 
 def _merge_queue_merge_method(config: GithubRepoConfig) -> MergeQueueMergeMethod:
+    repository_settings = config
+    if config.import_existing_repo_using_config is not None:
+        repository_settings = (
+            config.import_existing_repo_using_config
+        )  # the Repository resource takes its merge flags from the import config
+    enabled_on_repository: list[MergeMethod] = [
+        "squash"
+    ]  # always enabled on the repository, there is no config knob for it
+    if repository_settings.allow_merge_commit:
+        enabled_on_repository.append("merge")
+    if repository_settings.allow_rebase_merge:
+        enabled_on_repository.append("rebase")
     candidates: list[MergeMethod] = []
-    if config.allowed_merge_methods is not None:
-        candidates.extend(config.allowed_merge_methods)
-    else:
-        candidates.append("squash")  # always enabled on the repository, there is no config knob for it
-        if config.allow_merge_commit:
-            candidates.append("merge")
-        if config.allow_rebase_merge:
-            candidates.append("rebase")
+    for method in enabled_on_repository:
+        if config.allowed_merge_methods is None:
+            candidates.append(method)
+        elif method in config.allowed_merge_methods:
+            candidates.append(method)
     if len(candidates) != 1:
-        raise MergeQueueMergeMethodAmbiguousError(repo_name=config.name, candidates=candidates)
+        raise MergeQueueMergeMethodError(repo_name=config.name, candidates=candidates)
     return _MERGE_QUEUE_MERGE_METHODS[candidates[0]]
 
 
