@@ -47,7 +47,7 @@ def build_org_github_resources(  # noqa: PLR0913 # this is a lot of arguments, b
     tokens_created: bool,
 ) -> None:
     if not USE_REPO_SECRET_FOR_GITHUB_IAC_TOKENS:
-        # Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write.  Organization: Members Read&Write, Custom organization roles: Read & write (only needed if org_role_assignments are configured)
+        # Token permissions needed: All repositories, Administration: Read & write, Environments: Read & write, Contents: read & write.  Organization: Members Read&Write, Custom organization roles: Read (only needed if org_role_assignments are configured)
         # After the initial deployment which creates the secret, go in and use the Manual Secrets permission set to update the secret with the real token, then you can create repos
         _ = secretsmanager.Secret(
             append_resource_suffix("github-deploy-access-token"),
@@ -68,20 +68,21 @@ def build_org_github_resources(  # noqa: PLR0913 # this is a lot of arguments, b
     if not tokens_created:
         return
     provider = create_github_provider(org_name=org_name)
-    create_repos(
-        configs=repo_configs,
-        provider=provider,
-        include_aws_org_repos=include_aws_org_repos,
-        include_internal_packages=include_internal_packages,
-        global_autolinks=global_autolinks,
-    )
-    create_teams(
+    team_ids = create_teams(
         configs=team_configs,
         provider=provider,
         org_members=org_members,
         root_team=root_team,
         org_name=org_name,
         root_team_push_repos=root_team_push_repos,
+    )
+    create_repos(
+        configs=repo_configs,
+        provider=provider,
+        team_ids=team_ids,
+        include_aws_org_repos=include_aws_org_repos,
+        include_internal_packages=include_internal_packages,
+        global_autolinks=global_autolinks,
     )
     create_org_role_assignments(org_members=org_members, provider=provider)
     create_repository_collaborators(configs=collaborator_configs, provider=provider)

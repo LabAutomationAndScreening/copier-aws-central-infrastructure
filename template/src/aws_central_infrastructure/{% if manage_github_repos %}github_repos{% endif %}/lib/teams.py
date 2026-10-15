@@ -4,6 +4,7 @@ from typing import Self
 from ephemeral_pulumi_deploy import append_resource_suffix
 from pulumi import ComponentResource
 from pulumi import InvokeOptions
+from pulumi import Output
 from pulumi import ResourceOptions
 from pulumi_github import OrganizationRoleUser
 from pulumi_github import Provider
@@ -92,6 +93,7 @@ class GithubTeam(ComponentResource):
             parent_team_id=config.parent_team_slug,
             opts=ResourceOptions(parent=self, provider=provider),
         )
+        self.team_id = team.id
         self.default_opts = ResourceOptions(parent=self, provider=provider, depends_on=[team])
 
         _ = TeamMembers(
@@ -201,7 +203,7 @@ def create_teams(  # noqa: PLR0913 # this is a lot of arguments, but they're all
     root_team: GithubTeamConfig,
     org_name: str,
     root_team_push_repos: list[str] | None = None,
-) -> None:
+) -> dict[str, Output[int]]:
     # Additional Token permissions needed beyond repo: Organization-Members Read/Write
     fully_configure_teams(
         configs=configs,
@@ -212,18 +214,22 @@ def create_teams(  # noqa: PLR0913 # this is a lot of arguments, but they're all
 
     # TODO: confirm all team slugs are unique
     # TODO: confirm there's no duplicate repos listed in the GithubTeamConfig repo permissions (prefer over dict so that there's no silent overriding of permissions)
+    team_ids: dict[str, Output[int]] = {}
     for config in configs:
         if config.parent_team is None and config is not root_team:
             config.parent_team = root_team
-        _ = GithubTeam(config=config, org_name=org_name, provider=provider)
+        team = GithubTeam(config=config, org_name=org_name, provider=provider)
+        team_ids[config.slug] = team.team_id.apply(int)
+    return team_ids
 
 
 def create_org_role_assignments(*, org_members: GithubOrgMembers, provider: Provider) -> None:
     """Grant organization-wide roles to individual members.
 
     The numeric role IDs differ between organizations, so they are looked up by name at deploy time rather
-    than hardcoded. This requires the Custom organization roles permission: read on the preview token, and read &
-    write on the deploy token in order to assign them. It is distinct from the Members permission.
+    than hardcoded. The lookup needs the Custom organization roles permission (read) on both the preview and the
+    deploy token. Assigning a role to a user is covered by the Members permission (write), which the deploy token
+    already needs for team membership.
     Pre-defined roles such as all_repo_triage exist on every GitHub plan, custom roles need Enterprise Cloud.
     """
     if len(org_members.org_role_assignments) == 0:

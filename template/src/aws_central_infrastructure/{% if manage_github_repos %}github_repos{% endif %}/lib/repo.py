@@ -1,4 +1,6 @@
 import re
+from collections.abc import Collection
+from collections.abc import Mapping
 from collections.abc import MutableSequence
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
@@ -8,6 +10,7 @@ from typing import override
 
 from ephemeral_pulumi_deploy import append_resource_suffix
 from pulumi import ComponentResource
+from pulumi import Output
 from pulumi import Resource
 from pulumi import ResourceOptions
 from pulumi_github import Provider
@@ -21,6 +24,7 @@ from pulumi_github import RepositoryRulesetBypassActorArgs
 from pulumi_github import RepositoryRulesetConditionsArgs
 from pulumi_github import RepositoryRulesetConditionsRefNameArgs
 from pulumi_github import RepositoryRulesetRulesArgs
+from pulumi_github import RepositoryRulesetRulesMergeQueueArgs
 from pulumi_github import RepositoryRulesetRulesPullRequestArgs
 from pulumi_github import RepositoryRulesetRulesRequiredStatusChecksArgs
 from pulumi_github import RepositoryRulesetRulesRequiredStatusChecksRequiredCheckArgs
@@ -51,6 +55,23 @@ class AutoLinkConfig(BaseModel):
 
 
 GLOBAL_AUTOLINKS: set[AutoLinkConfig] = set()
+
+type MergeMethod = Literal["merge", "squash", "rebase"]
+type MergeQueueMergeMethod = Literal["MERGE", "SQUASH", "REBASE"]
+_MERGE_QUEUE_MERGE_METHODS: dict[MergeMethod, MergeQueueMergeMethod] = {
+    "merge": "MERGE",
+    "squash": "SQUASH",
+    "rebase": "REBASE",
+}
+
+
+class MergeQueueConfig(BaseModel):
+    grouping_strategy: Literal["ALLGREEN", "HEADGREEN"] = "ALLGREEN"
+    check_response_timeout_minutes: int = 60
+    max_entries_to_build: int = 5
+    max_entries_to_merge: int = 5
+    min_entries_to_merge: int = 1
+    min_entries_to_merge_wait_minutes: int = 5
 
 
 class GithubRepoConfig(BaseModel):
@@ -85,7 +106,7 @@ class GithubRepoConfig(BaseModel):
     )
     autolink_references: list[AutoLinkConfig] = Field(default_factory=list[AutoLinkConfig])
     topics: list[str] = Field(default_factory=list)
-    allowed_merge_methods: Sequence[Literal["merge", "squash", "rebase"]] | None = Field(
+    allowed_merge_methods: Sequence[MergeMethod] | None = Field(
         default=None,
         description="When left as None, this just uses the boolean flags for allow_merge_commit etc. But it can be set to an explicit list, usually in an attempt to prevent all types of merge commits and only allow fast-forward merges ('merge' cannot be allowed as a value here in that case, typically 'rebase' is used for this field)",
     )
@@ -93,6 +114,70 @@ class GithubRepoConfig(BaseModel):
         default_factory=list,
         description="Branch names or fnmatch globs (e.g. 'development', 'release/*') that should receive the SAME protection ruleset as the default branch. Used by repos following a gitflow SDLC. Each entry is matched as refs/heads/<entry>.",
     )
+    review_exempt_teams: list[str] = Field(
+        default_factory=list,
+        description="Slugs of teams (as produced by GithubTeamConfig.slug) whose members may merge pull requests into the protected branches without any approving review. The other branch rules, including required status checks, still apply. The exemption is keyed on the user performing the merge, not on the pull request author.",
+    )
+    merge_queue: MergeQueueConfig | None = Field(
+        default=None,
+        description="When set, merges into the protected branches go through GitHub's merge queue with these settings (the defaults are GitHub's). The queue tests each pull request merged onto the branch tip itself, so require_branch_to_be_up_to_date_before_merge is ignored (it would only block entry into the queue). The queue's merge method is derived from the repository's allowed merge methods, which must resolve to exactly one.",
+    )
+
+
+class ReviewExemptTeamNotFoundError(Exception):
+    def __init__(self, *, repo_name: str, team_slug: str, available_team_slugs: list[str]):
+        super().__init__(
+            f"Repository '{repo_name}' lists review exempt team '{team_slug}', but no team config produces that slug. Available team slugs: {available_team_slugs}"
+        )
+
+
+def _validate_review_exempt_teams(*, configs: Sequence[GithubRepoConfig], team_slugs: Collection[str]) -> None:
+    for config in configs:
+        for team_slug in config.review_exempt_teams:
+            if team_slug not in team_slugs:
+                raise ReviewExemptTeamNotFoundError(
+                    repo_name=config.name, team_slug=team_slug, available_team_slugs=sorted(team_slugs)
+                )
+
+
+class MergeQueueMergeMethodError(Exception):
+    def __init__(self, *, repo_name: str, candidates: Sequence[MergeMethod]):
+        super().__init__(
+            f"Repository '{repo_name}' enables a merge queue, which needs exactly one merge method that is both enabled on the repository and allowed by the ruleset, but the config resolves to {list(candidates)}. Adjust allowed_merge_methods or the allow_*_merge flags."
+        )
+
+
+def _merge_queue_merge_method(config: GithubRepoConfig) -> MergeQueueMergeMethod:
+    repository_settings = config
+    if config.import_existing_repo_using_config is not None:
+        repository_settings = (
+            config.import_existing_repo_using_config
+        )  # the Repository resource takes its merge flags from the import config
+    enabled_on_repository: list[MergeMethod] = [
+        "squash"
+    ]  # always enabled on the repository, there is no config knob for it
+    if repository_settings.allow_merge_commit:
+        enabled_on_repository.append("merge")
+    if repository_settings.allow_rebase_merge:
+        enabled_on_repository.append("rebase")
+    candidates: list[MergeMethod] = []
+    for method in enabled_on_repository:
+        if config.allowed_merge_methods is None:
+            candidates.append(method)
+        elif method in config.allowed_merge_methods:
+            candidates.append(method)
+    if len(candidates) != 1:
+        raise MergeQueueMergeMethodError(repo_name=config.name, candidates=candidates)
+    return _MERGE_QUEUE_MERGE_METHODS[candidates[0]]
+
+
+def _bypass_actors_or_none(
+    actors: MutableSequence[RepositoryRulesetBypassActorArgs],
+) -> MutableSequence[RepositoryRulesetBypassActorArgs] | None:
+    # supplying an empty list seems to cause problems, so explicitly pass None if no bypass
+    if len(actors) == 0:
+        return None
+    return actors
 
 
 def _branch_ruleset_targets(
@@ -118,6 +203,7 @@ class GithubRepo(ComponentResource):
         *,
         config: GithubRepoConfig,
         global_autolinks: set[AutoLinkConfig],
+        team_ids: Mapping[str, Output[int]],
         provider: Provider | None = None,
     ):
         super().__init__(
@@ -227,21 +313,42 @@ class GithubRepo(ComponentResource):
                     actor_id=4,  # the ID for the Write Repository Role
                 )
             )
-        # supplying an empty list seems to cause problems, so explicitly pass None if no bypass
-        ruleset_bypass_actors: MutableSequence[RepositoryRulesetBypassActorArgs] | None = None
-        if len(bypass_actors) > 0:
-            ruleset_bypass_actors = bypass_actors
+        review_bypass_actors: MutableSequence[RepositoryRulesetBypassActorArgs] = [*bypass_actors]
+        for team_slug in config.review_exempt_teams:
+            review_bypass_actors.append(
+                RepositoryRulesetBypassActorArgs(
+                    actor_type="Team",
+                    bypass_mode="exempt",  # the rule never runs for members of the team. GitHub's auto-merge completion ignores the pull_request bypass mode, so that mode cannot be used for this
+                    actor_id=team_ids[team_slug],
+                )
+            )
+        merge_queue: RepositoryRulesetRulesMergeQueueArgs | None = None
+        strict_required_status_checks = config.require_branch_to_be_up_to_date_before_merge
+        if config.merge_queue is not None:
+            merge_queue = RepositoryRulesetRulesMergeQueueArgs(
+                merge_method=_merge_queue_merge_method(config),
+                grouping_strategy=config.merge_queue.grouping_strategy,
+                check_response_timeout_minutes=config.merge_queue.check_response_timeout_minutes,
+                max_entries_to_build=config.merge_queue.max_entries_to_build,
+                max_entries_to_merge=config.merge_queue.max_entries_to_merge,
+                min_entries_to_merge=config.merge_queue.min_entries_to_merge,
+                min_entries_to_merge_wait_minutes=config.merge_queue.min_entries_to_merge_wait_minutes,
+            )
+            strict_required_status_checks = False
         for resource_suffix, ruleset_name, includes in _branch_ruleset_targets(config):
+            conditions = RepositoryRulesetConditionsArgs(
+                ref_name=RepositoryRulesetConditionsRefNameArgs(includes=includes, excludes=[])
+            )
+            ruleset_opts = ResourceOptions(provider=provider, parent=self, depends_on=conditional_repo_depends)
+            # The review requirements live in their own ruleset so that review-exempt teams can be exempted from them alone. Rulesets on the same branch aggregate, with the most restrictive version of a rule winning
             _ = RepositoryRuleset(
                 append_resource_suffix(resource_suffix, max_length=150),
-                bypass_actors=ruleset_bypass_actors,
+                bypass_actors=_bypass_actors_or_none(bypass_actors),
                 name=ruleset_name,
                 repository=config.name,
                 target="branch",
                 enforcement="active",
-                conditions=RepositoryRulesetConditionsArgs(
-                    ref_name=RepositoryRulesetConditionsRefNameArgs(includes=includes, excludes=[])
-                ),
+                conditions=conditions,
                 rules=RepositoryRulesetRulesArgs(
                     deletion=True,
                     non_fast_forward=True,
@@ -252,8 +359,29 @@ class GithubRepo(ComponentResource):
                                 integration_id=15368,  # the ID for Github Actions
                             )
                         ],
-                        strict_required_status_checks_policy=config.require_branch_to_be_up_to_date_before_merge,
+                        strict_required_status_checks_policy=strict_required_status_checks,
                     ),
+                    merge_queue=merge_queue,
+                    # a pull request is still required here, but with no review requirements: exemption is per ruleset, so the config's review knobs live only in the "(Review)" ruleset below
+                    pull_request=RepositoryRulesetRulesPullRequestArgs(
+                        allowed_merge_methods=config.allowed_merge_methods,
+                        dismiss_stale_reviews_on_push=False,
+                        require_last_push_approval=False,
+                        required_approving_review_count=0,
+                        require_code_owner_review=False,
+                    ),
+                ),
+                opts=ruleset_opts,
+            )
+            _ = RepositoryRuleset(
+                append_resource_suffix(f"{resource_suffix}-review", max_length=150),
+                bypass_actors=_bypass_actors_or_none(review_bypass_actors),
+                name=f"{ruleset_name} (Review)",
+                repository=config.name,
+                target="branch",
+                enforcement="active",
+                conditions=conditions,
+                rules=RepositoryRulesetRulesArgs(
                     pull_request=RepositoryRulesetRulesPullRequestArgs(
                         allowed_merge_methods=config.allowed_merge_methods,
                         dismiss_stale_reviews_on_push=config.dismiss_stale_reviews_on_push,
@@ -262,7 +390,7 @@ class GithubRepo(ComponentResource):
                         require_code_owner_review=config.require_code_owner_review,
                     ),
                 ),
-                opts=ResourceOptions(provider=provider, parent=self, depends_on=conditional_repo_depends),
+                opts=ruleset_opts,
             )
 
         autolinks = global_autolinks | set(config.autolink_references)
@@ -277,10 +405,11 @@ class GithubRepo(ComponentResource):
             )
 
 
-def create_repos(
+def create_repos(  # noqa: PLR0913 # this is a lot of arguments, but they're all kwargs
     *,
     configs: list[GithubRepoConfig] | None = None,
     provider: Provider,
+    team_ids: Mapping[str, Output[int]],
     include_aws_org_repos: bool = False,
     include_internal_packages: bool = True,
     global_autolinks: set[AutoLinkConfig] | None = None,
@@ -332,5 +461,6 @@ def create_repos(
                 if config.name == package_claim.repo_name:
                     config.create_pypi_publishing_environments = True
                     break
+    _validate_review_exempt_teams(configs=configs, team_slugs=team_ids.keys())
     for config in configs:
-        _ = GithubRepo(config=config, global_autolinks=resolved_autolinks, provider=provider)
+        _ = GithubRepo(config=config, global_autolinks=resolved_autolinks, team_ids=team_ids, provider=provider)
