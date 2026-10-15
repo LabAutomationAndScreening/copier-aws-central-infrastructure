@@ -1,5 +1,4 @@
 from typing import Self
-from typing import TypedDict
 from typing import TypeGuard
 
 from ephemeral_pulumi_deploy import get_config_str
@@ -24,6 +23,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import field_validator
 from pydantic import model_validator
+from typing_extensions import TypedDict
 
 from .constants import GITHUB_ORG_IDS
 
@@ -75,7 +75,7 @@ def principal_in_org_condition(org_id: str) -> GetPolicyDocumentStatementConditi
     )
 
 
-class CommonOidcConfigKwargs(TypedDict):
+class CommonOidcConfigKwargs(TypedDict, closed=True):
     role_name: str
     repo_org: str
     repo_name: str
