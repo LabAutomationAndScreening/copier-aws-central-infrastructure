@@ -19,7 +19,7 @@ type RepositoryName = str
 type GithubRepositoryPermission = Literal["pull", "triage", "push", "maintain", "admin"]
 type OrganizationRoleName = str
 
-# Predefined GitHub Enterprise Cloud role granting triage on every repo in the org, including future ones.
+# Predefined organization role, available on every GitHub plan, granting triage on every repo in the org, including future ones.
 ALL_REPOSITORY_TRIAGE_ROLE = "all_repo_triage"
 
 
